@@ -6,6 +6,7 @@
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
+import DOMPurify from 'dompurify'
 
 const props = defineProps({
   content: { type: String, default: '' },
@@ -25,7 +26,7 @@ mermaid.initialize({ startOnLoad: false, theme: 'neutral', suppressErrorRenderin
 let mermaidCounter = 0
 
 function processContent(text) {
-  if (!text) return { html: '', mermaidBlocks: [] }
+  if (!text) return ''
 
   // Extract mermaid code blocks and replace with placeholder divs
   const mermaidBlocks = []
@@ -35,7 +36,9 @@ function processContent(text) {
     return `<div class="mermaid-container" id="${id}"></div>`
   })
 
-  const html = marked.parse(withoutMermaid)
+  const rawHtml = marked.parse(withoutMermaid)
+  // Sanitize before di-v-html
+  const html = DOMPurify.sanitize(rawHtml)
   return { html, mermaidBlocks }
 }
 
@@ -46,7 +49,7 @@ async function renderMermaidBlocks(blocks) {
     if (!el) continue
     try {
       const { svg } = await mermaid.render(`${block.id}-svg`, block.code)
-      el.innerHTML = svg
+      el.innerHTML = DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } })
     } catch (e) {
       el.innerHTML = `<p class="text-xs text-red-400">Diagram error: unable to render</p>`
     }
