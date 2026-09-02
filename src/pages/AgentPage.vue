@@ -25,7 +25,7 @@
           ]"
           :title="sidebarCollapsed ? item.name : ''"
         >
-          <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300" :class="item.name === 'Gemono' ? 'group-hover:animate-pulse text-gray-800/80' : ''" />
+          <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300" :class="item.name === 'Gemono' ? 'group-hover:animate-pulse' : ''" />
           <span v-if="!sidebarCollapsed">{{ item.name }}</span>
         </button>
       </nav>
@@ -76,7 +76,7 @@
           <div
             v-if="!editingTitle"
             @click="startEditTitle"
-            class="inline-flex items-center max-w-35 sm:max-w- px-2.5 py-1 rounded-2xl border text-xs font-medium truncate cursor-text transition hover:opacity-80"
+            class="inline-flex items-center max-w-35 sm:max-w- px-2.5 py-1 rounded-lg border text-xs font-medium truncate cursor-text transition hover:opacity-80"
             :style="{ borderColor: accentColor + '55', color: accentColor }"
             title="Klik untuk ganti nama percakapan"
           >
@@ -89,7 +89,7 @@
             @keydown.enter="titleInputEl?.blur()"
             @keydown.esc="cancelEditTitle"
             @blur="saveTitle"
-            class="px-2.5 py-1 rounded-2xl border text-xs font-medium outline-none bg-transparent"
+            class="px-2.5 py-1 rounded-lg border text-xs font-medium outline-none bg-transparent"
             :style="{ width: titleInputWidth, borderColor: accentColor, color: accentColor }"
           />
         </div>
@@ -100,7 +100,7 @@
           <div class="relative" ref="historyDropdownRef">
             <button
               @click="toggleHistoryDropdown"
-              class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-2xl border transition"
+              class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition"
               :class="isDark ? 'border-white/20 text-white/70 hover:bg-white/10' : 'border-gray-200 text-gray-600 hover:bg-gray-50 bg-white'"
             >
               <HistoryIcon :size="13" />
