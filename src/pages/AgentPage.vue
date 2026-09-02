@@ -25,7 +25,7 @@
           ]"
           :title="sidebarCollapsed ? item.name : ''"
         >
-          <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300" :class="item.name === 'Gemono' ? 'group-hover:animate-pulse' : ''" />
+          <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300" :class="item.name === 'Gemono' ? 'group-hover:animate-pulse text-gray-800/80' : ''" />
           <span v-if="!sidebarCollapsed">{{ item.name }}</span>
         </button>
       </nav>
@@ -52,8 +52,7 @@
             </div>
             <button
               @click="handleLogout"
-              class="transition shrink-0"
-              :class="isDark ? 'text-white/40 hover:text-white' : 'text-gray-800/70 hover:text-gray-900'"
+              class="text-gray-800/70 hover:text-gray-900 transition shrink-0"
               title="Logout"
             >
               <LogOutIcon :size="15" />
@@ -90,8 +89,8 @@
             @keydown.enter="titleInputEl?.blur()"
             @keydown.esc="cancelEditTitle"
             @blur="saveTitle"
-            class="max-w-35 sm:max-w- px-2.5 py-1 rounded-2xl border text-xs font-medium outline-none bg-transparent"
-            :style="{ borderColor: accentColor, color: accentColor }"
+            class="px-2.5 py-1 rounded-2xl border text-xs font-medium outline-none bg-transparent"
+            :style="{ width: titleInputWidth, borderColor: accentColor, color: accentColor }"
           />
         </div>
         <div v-else class="flex-1 min-w-0"></div>
@@ -110,7 +109,7 @@
 
             <div
               v-if="historyDropdownOpen"
-              class="absolute right-0 top-full mt-2 w-72 rounded-lg shadow-lg z-20 overflow-hidden border max-h-96 flex flex-col"
+              class="absolute right-0 top-full mt-2 w-72 rounded-2xl shadow-lg z-20 overflow-hidden border max-h-96 flex flex-col"
               :class="isDark ? 'bg-[#1e293b] border-white/10' : 'bg-white border-gray-100'"
             >
               <button
@@ -293,6 +292,12 @@ const accentColor = ref('#0f8cd5')
 const editingTitle = ref(false)
 const titleDraft = ref('')
 const titleInputEl = ref(null)
+
+// lebar box rename mengikuti panjang teks yang diketik (min 6ch, max 40ch)
+const titleInputWidth = computed(() => {
+  const len = titleDraft.value.length || 1
+  return Math.min(Math.max(len + 2, 6), 40) + 'ch'
+})
 
 function startEditTitle() {
   titleDraft.value = activeConversationTitle.value
