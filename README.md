@@ -15,12 +15,14 @@ The frontend is the user-facing side of Powerbind. It talks to the Spring Boot b
 | **Dashboard** (`/`) | Live home overview: current power (W), energy (kWh), cost, per-room cards with presence and relay state, 24 h power history chart, energy donut. Weather-aware theming |
 | **Agent** (`/agent`) | Streaming AI energy advisor: text chat, image queries (vision), document Q&A (PDF/DOCX/TXT), voice input (Whisper), and per-user conversation history with markdown + Mermaid rendering |
 
-```
-┌───────────────────────────────┐   REST /api/**       ┌─────────────────────────────┐
-│  Powerbind Frontend :5173     │ ──SSE /api/agent───▶ │   Powerbind Backend :8045   │
-│  Vue 3 • Vite • Pinia         │ ◀─WebSocket STOMP──── │   Spring Boot • MQTT • Groq │
-│  Tailwind v4 • Recharts       │  (/topic/presence,   │   PostgreSQL • InfluxDB     │
-└───────────────────────────────┘   /topic/power /ws)  └─────────────────────────────┘
+```mermaid
+flowchart LR
+    FE["Powerbind Frontend :5173<br>Vue 3 • Vite • Pinia<br>Tailwind v4 • Recharts"]
+    BE["Powerbind Backend :8045<br>Spring Boot • MQTT • Groq<br>PostgreSQL • InfluxDB"]
+
+    FE -- "REST /api/**" --> BE
+    BE -- "SSE /api/agent (streaming AI chat)" --> FE
+    BE -- "WebSocket STOMP /ws<br>(/topic/presence, /topic/power)" --> FE
 ```
 
 ---
