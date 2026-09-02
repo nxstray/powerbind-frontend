@@ -31,7 +31,11 @@
       </nav>
 
       <div class="px-2 pb-2 hidden md:block shrink-0">
-        <button @click="sidebarCollapsed = !sidebarCollapsed" class="w-full flex items-center justify-center py-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition">
+        <button
+          @click="sidebarCollapsed = !sidebarCollapsed"
+          class="w-full flex items-center justify-center py-2 rounded-xl transition"
+          :class="isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-gray-800/70 hover:text-gray-900 hover:bg-black/10'"
+        >
           <ChevronLeftIcon :size="16" :class="sidebarCollapsed ? 'rotate-180' : ''" class="transition-transform duration-300" />
         </button>
       </div>
@@ -46,7 +50,12 @@
               <p class="text-xs font-semibold text-white truncate">{{ authStore.user?.displayName || 'Admin' }}</p>
               <p class="text-[10px] text-white/50 truncate">{{ authStore.user?.username || 'admin' }}</p>
             </div>
-            <button @click="handleLogout" class="text-white/40 hover:text-white transition shrink-0" title="Logout">
+            <button
+              @click="handleLogout"
+              class="transition shrink-0"
+              :class="isDark ? 'text-white/40 hover:text-white' : 'text-gray-800/70 hover:text-gray-900'"
+              title="Logout"
+            >
               <LogOutIcon :size="15" />
             </button>
           </template>
@@ -63,14 +72,28 @@
           <MenuIcon :size="20" />
         </button>
 
-        <!-- Judul percakapan aktif — sejajar kiri dengan tombol Riwayat Chat -->
-        <h1
-          v-if="activeConversationTitle"
-          class="flex-1 min-w-0 text-sm md:text-base font-semibold truncate"
-          :class="isDark ? 'text-white' : 'text-gray-800'"
-        >
-          {{ activeConversationTitle }}
-        </h1>
+        <!-- Judul percakapan aktif — sejajar kiri dengan tombol Riwayat Chat, bisa diklik untuk rename -->
+        <div v-if="activeConversationId" class="flex-1 min-w-0">
+          <div
+            v-if="!editingTitle"
+            @click="startEditTitle"
+            class="inline-flex items-center max-w-35 sm:max-w- px-2.5 py-1 rounded-2xl border text-xs font-medium truncate cursor-text transition hover:opacity-80"
+            :style="{ borderColor: accentColor + '55', color: accentColor }"
+            title="Klik untuk ganti nama percakapan"
+          >
+            <span class="truncate">{{ activeConversationTitle }}</span>
+          </div>
+          <input
+            v-else
+            ref="titleInputEl"
+            v-model="titleDraft"
+            @keydown.enter="titleInputEl?.blur()"
+            @keydown.esc="cancelEditTitle"
+            @blur="saveTitle"
+            class="max-w-35 sm:max-w- px-2.5 py-1 rounded-2xl border text-xs font-medium outline-none bg-transparent"
+            :style="{ borderColor: accentColor, color: accentColor }"
+          />
+        </div>
         <div v-else class="flex-1 min-w-0"></div>
 
         <div class="flex items-center gap-2 shrink-0">
@@ -78,7 +101,7 @@
           <div class="relative" ref="historyDropdownRef">
             <button
               @click="toggleHistoryDropdown"
-              class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition"
+              class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-2xl border transition"
               :class="isDark ? 'border-white/20 text-white/70 hover:bg-white/10' : 'border-gray-200 text-gray-600 hover:bg-gray-50 bg-white'"
             >
               <HistoryIcon :size="13" />
@@ -250,6 +273,8 @@ let audioChunks = []
 const pendingFile = ref(null)
 const pendingFilePreview = ref(null)
 
+const ACTIVE_CONVERSATION_KEY = 'gemono_active_conversation_id'
+
 // History dropdown state
 const historyDropdownOpen = ref(false)
 const historyDropdownRef = ref(null)
@@ -258,8 +283,44 @@ const activeConversationId = ref(null)
 
 const activeConversationTitle = computed(() => {
   const conv = conversations.value.find((c) => c.id === activeConversationId.value)
-  return conv?.title || null
+  return conv?.title || 'Percakapan tanpa judul'
 })
+
+// warna aksen mengikuti tema weather saat ini (dipakai untuk border/teks judul)
+const accentColor = ref('#0f8cd5')
+
+// rename judul percakapan inline
+const editingTitle = ref(false)
+const titleDraft = ref('')
+const titleInputEl = ref(null)
+
+function startEditTitle() {
+  titleDraft.value = activeConversationTitle.value
+  editingTitle.value = true
+  nextTick(() => titleInputEl.value?.focus())
+}
+
+function cancelEditTitle() {
+  editingTitle.value = false
+}
+
+async function saveTitle() {
+  if (!editingTitle.value) return
+  editingTitle.value = false
+  const newTitle = titleDraft.value.trim()
+  if (!newTitle || newTitle === activeConversationTitle.value || !activeConversationId.value) return
+
+  const conv = conversations.value.find((c) => c.id === activeConversationId.value)
+  const previousTitle = conv?.title
+  if (conv) conv.title = newTitle // optimistic update
+
+  try {
+    await agentService.renameConversation(activeConversationId.value, newTitle)
+  } catch (_) {
+    console.warn('[Agent] Failed to rename conversation')
+    if (conv) conv.title = previousTitle // rollback kalau backend menolak
+  }
+}
 
 const navItems = [
   { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
@@ -280,20 +341,23 @@ async function fetchWeather() {
 
     let bgTheme = 'bg-[#f0f2f5]'
     let sidebarColor = 'from-[#0f8cd5]'
+    let accent = '#0f8cd5'
     let night = false
 
     if (isRain) {
-      bgTheme = 'bg-[#e5e7eb]'; sidebarColor = 'from-[#64748b]'
+      bgTheme = 'bg-[#e5e7eb]'; sidebarColor = 'from-[#64748b]'; accent = '#64748b'
     } else if (curr.is_day === 0) {
-      bgTheme = 'bg-[#1e293b]'; sidebarColor = 'from-[#1e1b4b]'; night = true
+      // aksen dibuat lebih terang dari sidebarColor supaya tetap kontras di atas bg gelap
+      bgTheme = 'bg-[#1e293b]'; sidebarColor = 'from-[#1e1b4b]'; accent = '#818cf8'; night = true
     } else if (hour >= 15 && hour < 18) {
-      bgTheme = 'bg-[#fed7aa]'; sidebarColor = 'from-[#f97316]'
+      bgTheme = 'bg-[#fed7aa]'; sidebarColor = 'from-[#f97316]'; accent = '#f97316'
     } else {
-      bgTheme = 'bg-[#f0f2f5]'; sidebarColor = 'from-[#0f8cd5]'
+      bgTheme = 'bg-[#f0f2f5]'; sidebarColor = 'from-[#0f8cd5]'; accent = '#0f8cd5'
     }
 
     weatherData.value = { sidebarColor }
     themeClass.value = bgTheme
+    accentColor.value = accent
     isDark.value = night
   } catch (error) {
     console.error('Failed to fetch weather data:', error)
@@ -379,9 +443,11 @@ async function loadConversation(id) {
       hasWarning: false,
     }))
     activeConversationId.value = id
+    localStorage.setItem(ACTIVE_CONVERSATION_KEY, String(id))
     await scrollToBottom()
   } catch (_) {
     console.warn('[Agent] Failed to load conversation')
+    localStorage.removeItem(ACTIVE_CONVERSATION_KEY)
   }
 }
 
@@ -390,6 +456,7 @@ function startNewChat() {
   activeConversationId.value = null
   historyDropdownOpen.value = false
   clearPendingFile()
+  localStorage.removeItem(ACTIVE_CONVERSATION_KEY)
 }
 
 async function removeConversation(id) {
@@ -465,6 +532,7 @@ async function send() {
     // conversation as active so the next message continues the same thread
     if (wasNewConversation && conversations.value.length > 0) {
       activeConversationId.value = conversations.value[0].id
+      localStorage.setItem(ACTIVE_CONVERSATION_KEY, String(activeConversationId.value))
     }
   }
   const onError = (err) => {
@@ -522,8 +590,12 @@ onMounted(async () => {
   fetchWeather()
   document.addEventListener('click', handleOutsideClick)
   try { await authStore.fetchProfile() } catch (_) {}
-  startTypewriter()
   await loadConversationList()
+
+  // tetap di conversation yang sedang aktif setelah refresh, kalau ada
+  const savedId = localStorage.getItem(ACTIVE_CONVERSATION_KEY)
+  if (savedId) await loadConversation(savedId)
+  if (!activeConversationId.value) startTypewriter()
 })
 
 onUnmounted(() => {
