@@ -16,7 +16,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/agent',
+      path: '/agent/:id?',
       name: 'agent',
       component: () => import('@/pages/AgentPage.vue'),
       meta: { requiresAuth: true },

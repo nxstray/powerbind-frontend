@@ -272,13 +272,13 @@ let audioChunks = []
 const pendingFile = ref(null)
 const pendingFilePreview = ref(null)
 
-const ACTIVE_CONVERSATION_KEY = 'gemono_active_conversation_id'
+const activeConversationId = computed(() => route.params.id || null)
 
 // History dropdown state
 const historyDropdownOpen = ref(false)
 const historyDropdownRef = ref(null)
 const conversations = ref([])
-const activeConversationId = ref(null)
+const loadedConversationId = ref(null)
 
 const activeConversationTitle = computed(() => {
   const conv = conversations.value.find((c) => c.id === activeConversationId.value)
@@ -436,8 +436,7 @@ async function loadConversationList() {
   } catch (_) { conversations.value = [] }
 }
 
-async function loadConversation(id) {
-  historyDropdownOpen.value = false
+async function fetchConversationMessages(id) {
   try {
     const history = await agentService.getConversationMessages(id)
     messages.value = history.map((h) => ({
@@ -447,32 +446,45 @@ async function loadConversation(id) {
       time: timeFormat(h.createdAt),
       hasWarning: false,
     }))
-    activeConversationId.value = id
-    localStorage.setItem(ACTIVE_CONVERSATION_KEY, String(id))
+    loadedConversationId.value = id
     await scrollToBottom()
   } catch (_) {
     console.warn('[Agent] Failed to load conversation')
-    localStorage.removeItem(ACTIVE_CONVERSATION_KEY)
+    router.replace('/agent')
   }
 }
 
+function loadConversation(id) {
+  historyDropdownOpen.value = false
+  if (route.params.id === id) return
+  router.push(`/agent/${id}`)
+}
+
 function startNewChat() {
-  messages.value = []
-  activeConversationId.value = null
   historyDropdownOpen.value = false
   clearPendingFile()
-  localStorage.removeItem(ACTIVE_CONVERSATION_KEY)
+  if (route.params.id) router.push('/agent')
+  else messages.value = []
 }
 
 async function removeConversation(id) {
   try {
     await agentService.deleteConversation(id)
     conversations.value = conversations.value.filter((c) => c.id !== id)
-    if (activeConversationId.value === id) startNewChat()
+    if (route.params.id === id) startNewChat()
   } catch (_) {
     console.warn('[Agent] Failed to delete conversation')
   }
 }
+
+watch(
+  () => route.params.id,
+  (id) => {
+    if (id === loadedConversationId.value) return
+    if (id) fetchConversationMessages(id)
+    else { messages.value = []; loadedConversationId.value = null; startTypewriter() }
+  },
+)
 
 // ===== File attachment =====
 function handleFileSelect(file) {
@@ -536,8 +548,9 @@ async function send() {
     // if this was the first message of a new thread, adopt the newest
     // conversation as active so the next message continues the same thread
     if (wasNewConversation && conversations.value.length > 0) {
-      activeConversationId.value = conversations.value[0].id
-      localStorage.setItem(ACTIVE_CONVERSATION_KEY, String(activeConversationId.value))
+      const newId = conversations.value[0].id
+      loadedConversationId.value = newId // Make sure to update loadedConversationId to avoid refetching
+      router.replace(`/agent/${newId}`)
     }
   }
   const onError = (err) => {
@@ -597,10 +610,8 @@ onMounted(async () => {
   try { await authStore.fetchProfile() } catch (_) {}
   await loadConversationList()
 
-  // tetap di conversation yang sedang aktif setelah refresh, kalau ada
-  const savedId = localStorage.getItem(ACTIVE_CONVERSATION_KEY)
-  if (savedId) await loadConversation(savedId)
-  if (!activeConversationId.value) startTypewriter()
+  if (route.params.id) await fetchConversationMessages(route.params.id)
+  else startTypewriter()
 })
 
 onUnmounted(() => {
