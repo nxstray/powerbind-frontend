@@ -128,10 +128,10 @@
   }
 }
 
-/* Custom scrollbar — used in the chat area, history dropdown, and sidebar nav */
+/* Custom scrollbars */
 .custom-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(15, 140, 213, 0.35) transparent;
+  scrollbar-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 35%, transparent) transparent;
 }
 .custom-scroll::-webkit-scrollbar {
   width: 6px;
@@ -141,15 +141,23 @@
   background: transparent;
 }
 .custom-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(15, 140, 213, 0.35);
+  background-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 35%, transparent);
   border-radius: 9999px;
   transition: background-color 0.2s ease;
 }
 .custom-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(15, 140, 213, 0.6);
+  background-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 60%, transparent);
 }
 
-/* Textarea chat input — no visible scrollbar, height follows content (auto-resized from JS) */
+/* History item */
+.conv-item {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.conv-item:hover {
+  border-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 40%, transparent);
+}
+
+/* Textarea chat input */
 .chat-input-textarea {
   scrollbar-width: none;
 }
@@ -159,7 +167,7 @@
   display: none;
 }
 
-/* Blinking cursor animation */
+/* Blinking cursor for typewriter effect */
 .typewriter-cursor {
   display: inline-block;
   animation: blink-cursor 0.9s step-end infinite;
