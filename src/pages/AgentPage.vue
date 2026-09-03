@@ -1,4 +1,5 @@
 <template>
+  <Toast :toasts="anomalyToasts" @dismiss="dismissToast" />
   <div class="min-h-screen flex transition-colors duration-1000 ease-in-out" :class="themeClass">
 
     <!-- Mobile overlay -->
@@ -199,9 +200,6 @@
             <!-- Agent Message — tanpa avatar sparkles / background gradient -->
             <div v-else class="self-start max-w-full md:max-w-[85%] w-full">
               <MarkdownRenderer :content="msg.content" :class="isDark ? 'text-gray-200' : 'text-gray-700'" class="text-sm md:text-base" />
-              <div v-if="msg.hasWarning" class="mt-2 flex items-center gap-1.5 text-amber-500 text-xs font-medium">
-                <span>Terdeteksi pemborosan energi</span>
-              </div>
               <p class="text-[10px] mt-1.5 opacity-40">{{ msg.time }}</p>
             </div>
 
@@ -264,10 +262,13 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
 import { useAuthStore } from '@/stores/authStore'
 import agentService from '@/services/agentService'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import ChatInputBar from '@/components/ChatInputBar.vue'
+import Toast from '@/components/Toast.vue'
 import HomeIcon from '@/components/icons/HomeIcon.vue'
 import SparklesIcon from '@/components/icons/SparklesIcon.vue'
 import LogOutIcon from '@/components/icons/LogOutIcon.vue'
@@ -427,7 +428,7 @@ function buildHistory() {
   }))
 }
 
-// ===== Typewriter greeting (font Doto) =====
+// Typewriter greeting (font Doto)
 const typedGreeting = ref('')
 let typeTimer = null
 
@@ -445,13 +446,13 @@ function startTypewriter() {
   }, 55)
 }
 
-// replay animasi kalau user kembali ke empty state (mis. setelah "Percakapan Baru")
+// replay animation typewriter when messages is cleared (start new chat)
 watch(
   () => messages.value.length === 0,
   (isEmpty) => { if (isEmpty) startTypewriter() },
 )
 
-// ===== History dropdown =====
+// History dropdown
 function toggleHistoryDropdown() {
   historyDropdownOpen.value = !historyDropdownOpen.value
 }
@@ -476,7 +477,6 @@ async function fetchConversationMessages(id) {
       role: h.role === 'assistant' ? 'agent' : 'user',
       content: h.content,
       time: timeFormat(h.createdAt),
-      hasWarning: false,
     }))
     loadedConversationId.value = id
     await scrollToBottom()
@@ -534,7 +534,33 @@ watch(
   },
 )
 
-// ===== File attachment =====
+// Real-time energy waste anomaly toasts
+const anomalyToasts = ref([])
+let anomalyStompClient = null
+
+function dismissToast(id) {
+  anomalyToasts.value = anomalyToasts.value.filter((t) => t.id !== id)
+}
+
+function connectAnomalySocket() {
+  const socket = new SockJS(`${import.meta.env.VITE_API_URL || 'http://localhost:8045'}/ws`)
+  anomalyStompClient = new Client({
+    webSocketFactory: () => socket,
+    onConnect: () => {
+      anomalyStompClient.subscribe('/topic/anomaly', (msg) => {
+        const event = JSON.parse(msg.body)
+        const toastId = Date.now()
+        anomalyToasts.value.push({ id: toastId, message: event.message })
+        // Auto-dismiss after 8 seconds so toasts don't pile up
+        setTimeout(() => dismissToast(toastId), 8000)
+      })
+    },
+    reconnectDelay: 5000,
+  })
+  anomalyStompClient.activate()
+}
+
+// File attachment
 function handleFileSelect(file) {
   if (!file) return
   pendingFile.value = file
@@ -577,15 +603,12 @@ async function send() {
   await scrollToBottom()
 
   const agentMsgId = Date.now() + 1
-  messages.value.push({ id: agentMsgId, role: 'agent', content: '', time: timeNow(), hasWarning: false })
+  messages.value.push({ id: agentMsgId, role: 'agent', content: '', time: timeNow()})
 
   const onChunk = (chunk) => {
     const msg = messages.value.find((m) => m.id === agentMsgId)
     if (msg) {
       msg.content += chunk
-      if (chunk.toLowerCase().includes('waste') || chunk.includes('boros') || chunk.includes('WARNING')) {
-        msg.hasWarning = true
-      }
       scrollToBottom()
     }
   }
@@ -671,6 +694,7 @@ onMounted(async () => {
   document.addEventListener('click', handleOutsideClick)
   try { await authStore.fetchProfile() } catch (_) {}
   await loadConversationList()
+  connectAnomalySocket()
 
   if (route.params.id) await fetchConversationMessages(route.params.id)
   else startTypewriter()
@@ -680,5 +704,6 @@ onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick)
   clearPendingFile()
   clearInterval(typeTimer)
+  if (anomalyStompClient) anomalyStompClient.deactivate()
 })
 </script>
