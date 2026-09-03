@@ -63,7 +63,7 @@
               <p class="text-xs font-semibold text-white truncate">{{ authStore.user?.displayName || 'Admin' }}</p>
               <p class="text-[10px] text-white/50 truncate">{{ authStore.user?.username || 'admin' }}</p>
             </div>
-            <button @click="handleLogout" class="text-white/40 hover:text-white transition shrink-0" title="Logout">
+            <button @click="askLogout" class="text-white/40 hover:text-white transition shrink-0" title="Logout">
               <LogOutIcon :size="15" />
             </button>
           </template>
@@ -256,6 +256,7 @@
                   v-for="room in store.summary.rooms"
                   :key="room.id"
                   :room="room"
+                  @request-off="askTurnOff"
                 />
               </div>
             </div>
@@ -284,6 +285,31 @@
 
       </main>
     </div>
+
+    <!-- Validation: turn a room's device off -->
+    <ConfirmDialog
+      :open="relayConfirm.open"
+      :loading="relayConfirm.loading"
+      danger
+      title="Matikan Perangkat"
+      :message="`Yakin ingin mematikan perangkat di ${relayConfirm.room?.name || 'ruangan ini'}? Perangkat tidak akan menyala lagi sampai dinyalakan ulang secara manual atau ada deteksi kehadiran baru.`"
+      confirm-text="Matikan"
+      cancel-text="Batal"
+      @confirm="confirmTurnOff"
+      @cancel="cancelTurnOff"
+    />
+
+    <!-- Validation: logout -->
+    <ConfirmDialog
+      :open="logoutConfirm.open"
+      :loading="logoutConfirm.loading"
+      title="Keluar dari Akun"
+      message="Kamu akan keluar dari sesi ini. Lanjutkan?"
+      confirm-text="Keluar"
+      cancel-text="Batal"
+      @confirm="confirmLogout"
+      @cancel="cancelLogout"
+    />
   </div>
 </template>
 
@@ -299,6 +325,7 @@ import LiquidCard from '@/components/LiquidCard.vue'
 import PowerChart from '@/components/PowerChart.vue'
 import EnergyDonut from '@/components/EnergyDonut.vue'
 import RoomCard from '@/components/RoomCard.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 import BoltIcon from '@/components/icons/BoltIcon.vue'
 import HomeIcon from '@/components/icons/HomeIcon.vue'
@@ -328,6 +355,12 @@ const dropdownRef = ref(null)
 const selectedHours = ref(24)
 const wsConnected = ref(false)
 let stompClient = null
+
+// Validation dialog state — relay off
+const relayConfirm = ref({ open: false, room: null, loading: false })
+
+// Validation dialog state — logout
+const logoutConfirm = ref({ open: false, loading: false })
 
 // Smart weather state
 const weatherData = ref({ 
@@ -461,9 +494,42 @@ function connectWebSocket() {
   stompClient.activate()
 }
 
-async function handleLogout() {
+// --- Relay off validation flow ---
+function askTurnOff(room) {
+  relayConfirm.value = { open: true, room, loading: false }
+}
+
+async function confirmTurnOff() {
+  if (!relayConfirm.value.room) return
+  relayConfirm.value.loading = true
+  try {
+    await store.setRoomRelay(relayConfirm.value.room.id, false)
+    relayConfirm.value = { open: false, room: null, loading: false }
+  } catch (e) {
+    console.warn('[Dashboard] Failed to turn off relay')
+    relayConfirm.value.loading = false
+  }
+}
+
+function cancelTurnOff() {
+  if (relayConfirm.value.loading) return
+  relayConfirm.value = { open: false, room: null, loading: false }
+}
+
+// --- Logout validation flow ---
+function askLogout() {
+  logoutConfirm.value = { open: true, loading: false }
+}
+
+async function confirmLogout() {
+  logoutConfirm.value.loading = true
   await authStore.logout()
   router.push({ name: 'login' })
+}
+
+function cancelLogout() {
+  if (logoutConfirm.value.loading) return
+  logoutConfirm.value = { open: false, loading: false }
 }
 
 onMounted(async () => {
