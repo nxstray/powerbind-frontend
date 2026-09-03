@@ -59,6 +59,7 @@
       <!-- Send — tanpa lingkaran permanen, hanya muncul saat hover -->
       <button
         @click="$emit('send')"
+        data-testid="send-button"
         :disabled="(!input.trim() && !pendingFile) || streaming"
         class="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition shrink-0 ml-1"
         :class="[
