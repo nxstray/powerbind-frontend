@@ -51,7 +51,7 @@
               <p class="text-[10px] text-white/50 truncate">{{ authStore.user?.username || 'admin' }}</p>
             </div>
             <button
-              @click="handleLogout"
+              @click="askLogout"
               class="text-gray-800/70 hover:text-gray-900 transition shrink-0"
               title="Logout"
             >
@@ -136,7 +136,7 @@
                 >
                   <span class="truncate flex-1">{{ conv.title || 'Percakapan tanpa judul' }}</span>
                   <button
-                    @click.stop="removeConversation(conv.id)"
+                    @click.stop="askDeleteConversation(conv)"
                     class="opacity-0 group-hover:opacity-100 ml-2 shrink-0 hover:text-red-500 transition"
                   >
                     <TrashIcon :size="12" />
@@ -234,6 +234,31 @@
       </div>
     </div>
   </div>
+
+  <!-- Validation: logout -->
+  <ConfirmDialog
+    :open="logoutConfirm.open"
+    :loading="logoutConfirm.loading"
+    title="Keluar dari Akun"
+    message="Kamu akan keluar dari sesi ini. Lanjutkan?"
+    confirm-text="Keluar"
+    cancel-text="Batal"
+    @confirm="confirmLogout"
+    @cancel="cancelLogout"
+  />
+
+  <!-- Validation: delete conversation -->
+  <ConfirmDialog
+    :open="deleteConvConfirm.open"
+    :loading="deleteConvConfirm.loading"
+    danger
+    title="Hapus Percakapan"
+    :message="`Percakapan '${deleteConvConfirm.conv?.title || 'tanpa judul'}' akan dihapus permanen dan tidak bisa dikembalikan. Lanjutkan?`"
+    confirm-text="Hapus"
+    cancel-text="Batal"
+    @confirm="confirmDeleteConversation"
+    @cancel="cancelDeleteConversation"
+  />
 </template>
 
 <script setup>
@@ -253,6 +278,7 @@ import TrashIcon from '@/components/icons/TrashIcon.vue'
 import FileIcon from '@/components/icons/FileIcon.vue'
 import CloseIcon from '@/components/icons/CloseIcon.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -278,6 +304,12 @@ const activeConversationId = computed(() => route.params.id || null)
 const historyDropdownOpen = ref(false)
 const historyDropdownRef = ref(null)
 const conversations = ref([])
+
+// Validation dialog state — logout
+const logoutConfirm = ref({ open: false, loading: false })
+
+// Validation dialog state — delete conversation
+const deleteConvConfirm = ref({ open: false, conv: null, loading: false })
 const loadedConversationId = ref(null)
 
 const activeConversationTitle = computed(() => {
@@ -477,6 +509,22 @@ async function removeConversation(id) {
   }
 }
 
+function askDeleteConversation(conv) {
+  deleteConvConfirm.value = { open: true, conv, loading: false }
+}
+
+async function confirmDeleteConversation() {
+  if (!deleteConvConfirm.value.conv) return
+  deleteConvConfirm.value.loading = true
+  await removeConversation(deleteConvConfirm.value.conv.id)
+  deleteConvConfirm.value = { open: false, conv: null, loading: false }
+}
+
+function cancelDeleteConversation() {
+  if (deleteConvConfirm.value.loading) return
+  deleteConvConfirm.value = { open: false, conv: null, loading: false }
+}
+
 watch(
   () => route.params.id,
   (id) => {
@@ -602,6 +650,20 @@ async function toggleVoice() {
 async function handleLogout() {
   await authStore.logout()
   router.push({ name: 'login' })
+}
+
+function askLogout() {
+  logoutConfirm.value = { open: true, loading: false }
+}
+
+async function confirmLogout() {
+  logoutConfirm.value.loading = true
+  await handleLogout()
+}
+
+function cancelLogout() {
+  if (logoutConfirm.value.loading) return
+  logoutConfirm.value = { open: false, loading: false }
 }
 
 onMounted(async () => {
