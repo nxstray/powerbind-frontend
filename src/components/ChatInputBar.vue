@@ -14,8 +14,9 @@
     </div>
 
     <div
-      class="w-full flex items-end border rounded-2xl pl-4 pr-2 py-2 shadow-sm transition-all"
-      :class="isDark ? 'bg-[#1e293b]/80 border-white/10' : 'bg-white border-gray-200'"
+      class="chat-input-box w-full flex items-end rounded-2xl pl-4 pr-2 py-2 shadow-sm transition-all"
+      :class="isDark ? 'bg-[#1e293b]/80 chat-input-box--dark' : 'bg-white chat-input-box--light'"
+      :style="{ '--chat-accent': accentColor }"
     >
       <!-- Attach file button -->
       <button
@@ -45,7 +46,7 @@
         :class="isDark ? 'text-white' : 'text-gray-800'"
       />
 
-      <!-- Voice input — circle on hover, consistent with the attach button -->
+      <!-- Voice input -->
       <button
         @click="$emit('toggle-voice')"
         :class="[
@@ -57,7 +58,7 @@
         <MicIcon :size="16" />
       </button>
 
-      <!-- Send — no permanent circle, only shows on hover -->
+      <!-- Send Button -->
       <button
         @click="$emit('send')"
         data-testid="send-button"
@@ -89,6 +90,8 @@ const props = defineProps({
   isDark: { type: Boolean, default: false },
   isRecording: { type: Boolean, default: false },
   streaming: { type: Boolean, default: false },
+  // Theme accent color (follows the weather-based theme), used for the border/shadow on hover
+  accentColor: { type: String, default: '#0f8cd5' },
 })
 
 const emit = defineEmits(['update:input', 'send', 'toggle-voice', 'file-select', 'clear-file'])
@@ -96,8 +99,7 @@ const emit = defineEmits(['update:input', 'send', 'toggle-voice', 'file-select',
 const fileInputEl = ref(null)
 const textareaEl = ref(null)
 
-// Max textarea height before scrolling kicks in — above this the content scrolls,
-// below this the box itself stretches to fit the text.
+// Hard limit the height of the textarea to avoid it growing too tall, and show a scrollbar if exceeded. The max-height is set to 240px, which is roughly 6 lines of text.
 const MAX_HEIGHT_PX = 240
 
 function resizeTextarea() {
@@ -114,7 +116,7 @@ function onInput(e) {
   nextTick(resizeTextarea)
 }
 
-// Reset height when the input is cleared externally (e.g. after a message is sent)
+// Reset textarea height when input is cleared externally (e.g. after sending a message)
 watch(() => props.input, (val) => {
   if (!val) nextTick(resizeTextarea)
 })
@@ -125,3 +127,27 @@ function onFileChange(e) {
   if (file) emit('file-select', file)
 }
 </script>
+
+<style scoped>
+/* Thin border by default, accent-colored border + soft shadow on hover — follows the active theme color */
+.chat-input-box {
+  border-width: 1px;
+  border-style: solid;
+}
+.chat-input-box--light {
+  border-color: #e5e7eb; /* gray-200 */
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.chat-input-box--light:hover {
+  border-color: var(--chat-accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--chat-accent) 22%, transparent);
+}
+.chat-input-box--dark {
+  border-color: rgba(255, 255, 255, 0.1);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.chat-input-box--dark:hover {
+  border-color: var(--chat-accent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--chat-accent) 35%, transparent);
+}
+</style>
