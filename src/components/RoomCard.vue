@@ -55,6 +55,17 @@
         </div>
       </div>
     </div>
+
+    <!-- Manual off — only shown while the relay is actually on. Actual shutdown only
+         happens after the parent shows a confirmation dialog and the user confirms. -->
+    <button
+      v-if="room.relayOn"
+      type="button"
+      @click="$emit('request-off', room)"
+      class="w-full text-xs font-medium text-red-500 border border-red-100 rounded-xl py-2 hover:bg-red-50 transition"
+    >
+      Matikan Perangkat
+    </button>
   </div>
 </template>
 
@@ -62,4 +73,6 @@
 defineProps({
   room: { type: Object, required: true },
 })
+
+defineEmits(['request-off'])
 </script>
