@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Annie+Use+Your+Telescope&family=Doto:wght@400..900&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
 
 @plugin 'tailwindcss-animate';
 
@@ -8,6 +9,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: 'Vazirmatn', sans-serif;
   --font-heading: var(--font-sans);
   --font-doto: 'Doto', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -122,10 +124,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Chocolate Classical Sans', sans-serif;
   }
 }
 
-/* Custom scrollbar — dipakai di area chat, dropdown riwayat, dan sidebar nav */
+/* Custom scrollbar — used in the chat area, history dropdown, and sidebar nav */
 .custom-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(15, 140, 213, 0.35) transparent;
@@ -146,7 +149,17 @@
   background-color: rgba(15, 140, 213, 0.6);
 }
 
-/* Cursor berkedip untuk animasi typewriter greeting */
+/* Textarea chat input — no visible scrollbar, height follows content (auto-resized from JS) */
+.chat-input-textarea {
+  scrollbar-width: none;
+}
+.chat-input-textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Blinking cursor animation */
 .typewriter-cursor {
   display: inline-block;
   animation: blink-cursor 0.9s step-end infinite;
