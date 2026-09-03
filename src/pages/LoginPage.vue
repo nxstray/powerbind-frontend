@@ -1,55 +1,42 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-[#f5f5f0]">
-    <div class="w-full max-w-md">
-      <!-- Logo / Title -->
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#0f8cd5] mb-4">
-          <BoltIcon :size="22" class="text-white" />
-        </div>
-        <h1 class="text-2xl font-semibold text-gray-900">Powerbind</h1>
-        <p class="text-sm text-gray-500 mt-1">Smart Home Monitoring</p>
-      </div>
+  <div class="min-h-screen flex items-center justify-center bg-[#f5f5f0] overflow-hidden">
+    <div class="ring">
+      <i style="--clr:#0f172a;"></i>
+      <i style="--clr:#0f8cd5;"></i>
+      <i style="--clr:#f97316;"></i>
 
-      <!-- Card -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 class="text-lg font-semibold text-gray-900 mb-6">Sign in</h2>
+      <!-- Card: Only input box -->
+      <div class="w-75 flex flex-col items-center gap-5">
+        <img src="/favicon.ico" alt="Powerbind" class="w-10 h-10" />
 
-        <form @submit.prevent="handleLogin" class="space-y-4">
-          <!-- Username -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
+        <form @submit.prevent="handleLogin" class="w-full flex flex-col gap-4">
+          <div class="inputBx">
             <input
               v-model="form.username"
               type="text"
-              placeholder="admin"
+              placeholder="Username"
               required
-              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0f8cd5]/30 focus:border-[#0f8cd5] transition"
             />
           </div>
 
-          <!-- Password -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+          <div class="inputBx">
             <input
               v-model="form.password"
               type="password"
-              placeholder="••••••••"
+              placeholder="Password"
               required
-              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0f8cd5]/30 focus:border-[#0f8cd5] transition"
             />
           </div>
 
-          <!-- Error -->
-          <p v-if="errorMsg" class="text-sm text-red-500">{{ errorMsg }}</p>
+          <p v-if="errorMsg" class="text-xs text-red-500 text-center -mt-1">{{ errorMsg }}</p>
 
-          <!-- Submit -->
-          <button
-            type="submit"
-            :disabled="loading"
-            class="w-full py-2.5 rounded-lg bg-[#0f8cd5] text-white text-sm font-medium hover:bg-[#0d7ec0] transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {{ loading ? 'Signing in...' : 'Sign in' }}
-          </button>
+          <div class="inputBx">
+            <input
+              type="submit"
+              :value="loading ? 'Signing in...' : 'Sign in'"
+              :disabled="loading"
+            />
+          </div>
         </form>
       </div>
     </div>
@@ -60,7 +47,6 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import BoltIcon from '@/components/icons/BoltIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -87,3 +73,79 @@ async function handleLogin() {
   }
 }
 </script>
+
+<style scoped>
+.ring {
+  position: relative;
+  width: 420px;
+  height: 420px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.ring i {
+  position: absolute;
+  inset: 0;
+  border: 2px solid #d1d5db;
+  transition: border 0.5s, filter 0.5s;
+}
+.ring i:nth-child(1) {
+  border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
+  animation: spin 6s linear infinite;
+}
+.ring i:nth-child(2) {
+  border-radius: 41% 44% 56% 59% / 38% 62% 63% 37%;
+  animation: spin 4s linear infinite;
+}
+.ring i:nth-child(3) {
+  border-radius: 41% 44% 56% 59% / 38% 62% 63% 37%;
+  animation: spinReverse 10s linear infinite;
+}
+.ring:hover i {
+  border: 4px solid var(--clr);
+  filter: drop-shadow(0 0 16px var(--clr));
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes spinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.inputBx {
+  position: relative;
+  width: 100%;
+}
+.inputBx input {
+  width: 100%;
+  padding: 0.65rem 1.1rem;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  color: #111827;
+  outline: none;
+  transition: 0.2s;
+}
+.inputBx input:focus {
+  border-color: #0f8cd5;
+  box-shadow: 0 0 0 3px rgba(15, 140, 213, 0.15);
+}
+.inputBx input::placeholder {
+  color: #9ca3af;
+}
+.inputBx input[type='submit'] {
+  cursor: pointer;
+  border: none;
+  color: white;
+  font-weight: 600;
+  background: linear-gradient(45deg, #0f8cd5, #38bdf8);
+  text-align: center;
+}
+.inputBx input[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+</style>
