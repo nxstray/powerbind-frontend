@@ -10,7 +10,7 @@
         :class="room.presenceDetected
           ? 'bg-[#7ADAA5]/20 text-[#16a34a]'
           : 'bg-gray-100 text-gray-400'"
-        class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2"
+        class="text-[10px] font-semibold px-2 py-0.5 rounded-lg shrink-0 ml-2"
       >
         {{ room.presenceDetected ? 'Occupied' : 'Empty' }}
       </span>
@@ -56,23 +56,89 @@
       </div>
     </div>
 
-    <!-- Manual off — only shown while the relay is actually on. Actual shutdown only
-         happens after the parent shows a confirmation dialog and the user confirms. -->
-    <button
-      v-if="room.relayOn"
-      type="button"
-      @click="$emit('request-off', room)"
-      class="w-full text-xs font-medium text-red-500 border border-red-100 rounded-xl py-2 hover:bg-red-50 transition"
-    >
-      Matikan Perangkat
-    </button>
+    <!-- Power toggle — round icon button. Green = relay on, red = relay off.
+         Desktop: a click opens the confirmation dialog directly.
+         Mobile: press-and-hold with a filling ring, then the confirmation dialog opens. -->
+    <div class="flex items-center justify-center pt-1">
+      <button
+        type="button"
+        :disabled="!room.relayOn"
+        @click="handleClick"
+        @pointerdown="handlePointerDown"
+        @pointerup="cancelHold"
+        @pointerleave="cancelHold"
+        @pointercancel="cancelHold"
+        class="relative w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-300 select-none touch-none"
+        :class="room.relayOn
+          ? 'bg-[#16a34a] text-white hover:bg-[#15803d] cursor-pointer'
+          : 'bg-red-500 text-white opacity-60 cursor-default'"
+        :title="room.relayOn ? 'Tahan untuk mematikan perangkat' : 'Perangkat sudah mati'"
+      >
+        <PowerIcon :size="18" />
+
+        <!-- Hold-to-confirm progress ring (mobile only) -->
+        <svg v-if="room.relayOn" class="absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 44 44">
+          <circle
+            cx="22" cy="22" r="19"
+            fill="none"
+            stroke="white"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            :stroke-dasharray="circumference"
+            :stroke-dashoffset="holding ? 0 : circumference"
+            :style="{
+              transition: holding ? `stroke-dashoffset ${HOLD_MS}ms linear` : 'stroke-dashoffset 200ms ease-out',
+              opacity: holding ? 0.9 : 0
+            }"
+          />
+        </svg>
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { ref, onMounted } from 'vue'
+import PowerIcon from '@/components/icons/PowerIcon.vue'
+
+const props = defineProps({
   room: { type: Object, required: true },
 })
 
-defineEmits(['request-off'])
+const emit = defineEmits(['request-off'])
+
+const HOLD_MS = 800
+const circumference = 2 * Math.PI * 19
+
+const holding = ref(false)
+const isTouch = ref(false)
+let holdTimer = null
+
+onMounted(() => {
+  isTouch.value = window.matchMedia('(pointer: coarse)').matches
+})
+
+function handleClick() {
+  // On touch devices, only a completed hold confirms — ignore plain taps
+  // so the round button can't be triggered by an accidental tap.
+  if (isTouch.value) return
+  if (props.room.relayOn) emit('request-off', props.room)
+}
+
+function handlePointerDown() {
+  if (!isTouch.value || !props.room.relayOn) return
+  holding.value = true
+  holdTimer = setTimeout(() => {
+    holding.value = false
+    emit('request-off', props.room)
+  }, HOLD_MS)
+}
+
+function cancelHold() {
+  if (holdTimer) {
+    clearTimeout(holdTimer)
+    holdTimer = null
+  }
+  holding.value = false
+}
 </script>
