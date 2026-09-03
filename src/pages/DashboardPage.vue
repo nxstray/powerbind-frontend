@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex transition-colors duration-1000 ease-in-out" :class="themeClass">
+  <div class="min-h-screen flex transition-colors duration-1000 ease-in-out" :class="themeClass" :style="{ '--accent-color': accentColor }">
 
     <!-- Mobile overlay -->
     <div
@@ -19,7 +19,7 @@
       ]"
     >
 
-      <nav class="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+      <nav class="custom-scroll flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
         <button
           v-for="item in navItems"
           :key="item.name"
@@ -86,7 +86,7 @@
             <MenuIcon :size="20" />
           </button>
           <div>
-            <h1 class="text-sm md:text-base font-bold text-gray-900">Overview</h1>
+            <h1 class="text-sm md:text-base font-bold text-gray-900">Ringkasan</h1>
             <p class="text-[10px] md:text-xs text-gray-400 hidden sm:block">{{ currentDate }}</p>
           </div>
         </div>
@@ -110,13 +110,13 @@
       </header>
 
       <!-- Content -->
-      <main class="flex-1 p-4 md:p-6 overflow-auto space-y-4 md:space-y-5 relative z-10">
+      <main class="custom-scroll flex-1 p-4 md:p-6 overflow-auto space-y-4 md:space-y-5 relative z-10">
 
         <!-- Loading state -->
         <div v-if="store.loading" class="flex items-center justify-center h-64">
           <div class="flex flex-col items-center gap-3">
             <div class="w-8 h-8 border-2 border-[#0f8cd5] border-t-transparent rounded-full animate-spin" />
-            <p class="text-xs text-gray-400">Loading dashboard...</p>
+            <p class="text-xs text-gray-400">Memuat dashboard...</p>
           </div>
         </div>
 
@@ -128,7 +128,7 @@
               @click="store.fetchSummary()"
               class="mt-3 text-xs text-[#0f8cd5] hover:underline"
             >
-              Try again
+              Coba lagi
             </button>
           </div>
         </div>
@@ -141,9 +141,9 @@
 
             <!-- Rooms -->
             <LiquidCard
-              label="Rooms"
+              label="Ruangan"
               :value="store.summary.totalRooms"
-              sub="registered"
+              sub="terdaftar"
               color="#0f8cd5"
               :fill="(store.summary.totalRooms / 10) * 100"
             >
@@ -152,9 +152,9 @@
 
             <!-- Occupied -->
             <LiquidCard
-              label="Occupied"
+              label="Terisi"
               :value="store.summary.occupiedRooms"
-              sub="with people"
+              sub="ada orang"
               color="#7ADAA5"
               :fill="store.summary.totalRooms > 0 ? (store.summary.occupiedRooms / store.summary.totalRooms) * 100 : 0"
             >
@@ -163,9 +163,9 @@
 
             <!-- Devices -->
             <LiquidCard
-              label="Devices"
+              label="Perangkat"
               :value="store.summary.activeDevices"
-              sub="relays on"
+              sub="relay aktif"
               color="#ECECBB"
               :fill="store.summary.totalRooms > 0 ? (store.summary.activeDevices / store.summary.totalRooms) * 100 : 0"
             >
@@ -174,9 +174,9 @@
 
             <!-- Power — dark variant -->
             <LiquidCard
-              label="Power"
+              label="Daya"
               :value="`${(store.summary.currentWatts || 0).toFixed(0)} W`"
-              sub="current usage"
+              sub="pemakaian saat ini"
               color="#0f8cd5"
               :fill="Math.min((store.summary.currentWatts || 0) / 10, 100)"
               :dark="true"
@@ -192,8 +192,8 @@
             <div class="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
               <div class="flex items-center justify-between mb-4">
                 <div>
-                  <h2 class="text-sm font-bold text-gray-900">Power Usage</h2>
-                  <p class="text-xs text-gray-400 mt-0.5">Watt consumption over time</p>
+                  <h2 class="text-sm font-bold text-gray-900">Pemakaian Daya</h2>
+                  <p class="text-xs text-gray-400 mt-0.5">Konsumsi watt dari waktu ke waktu</p>
                 </div>
                 <div class="relative" ref="dropdownRef">
                   <button
@@ -224,23 +224,23 @@
 
             <div class="bg-white rounded-2xl border border-gray-100 p-4 md:p-5 flex flex-col">
               <div>
-                <h2 class="text-sm font-bold text-gray-900">Today's Energy</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Consumption summary</p>
+                <h2 class="text-sm font-bold text-gray-900">Energi Hari Ini</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Ringkasan konsumsi</p>
               </div>
               <div class="flex-1 flex items-center justify-center py-2">
                 <EnergyDonut :kwh="store.summary.todayKwh || 0" :maxKwh="10" :size="160" />
               </div>
               <div class="space-y-2.5">
                 <div class="flex justify-between items-center">
-                  <span class="text-xs text-gray-400">Consumption</span>
+                  <span class="text-xs text-gray-400">Konsumsi</span>
                   <span class="text-sm font-bold text-gray-900">{{ (store.summary.todayKwh || 0).toFixed(2) }} kWh</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="text-xs text-gray-400">Est. Cost Today</span>
+                  <span class="text-xs text-gray-400">Estimasi Biaya Hari Ini</span>
                   <span class="text-sm font-bold text-gray-900">Rp {{ formatCost(store.summary.estimatedCostToday || 0) }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="text-xs text-gray-400">Monthly Est.</span>
+                  <span class="text-xs text-gray-400">Estimasi Bulanan</span>
                   <span class="text-sm font-bold text-[#0f8cd5]">Rp {{ formatCost((store.summary.estimatedCostToday || 0) * 30) }}</span>
                 </div>
               </div>
@@ -250,7 +250,7 @@
                     <!-- Row 3: Room cards + Activity -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
-              <h2 class="text-sm font-bold text-gray-900 mb-3">Room Status</h2>
+              <h2 class="text-sm font-bold text-gray-900 mb-3">Status Ruangan</h2>
               <div class="grid grid-cols-2 gap-3">
                 <RoomCard
                   v-for="room in store.summary.rooms"
@@ -262,8 +262,8 @@
             </div>
 
             <div class="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
-              <h2 class="text-sm font-bold text-gray-900 mb-1">Room Activity</h2>
-              <p class="text-xs text-gray-400 mb-4">Detection count today</p>
+              <h2 class="text-sm font-bold text-gray-900 mb-1">Aktivitas Ruangan</h2>
+              <p class="text-xs text-gray-400 mb-4">Jumlah deteksi hari ini</p>
               <div class="space-y-3">
                 <div v-for="room in roomActivity" :key="room.name">
                   <div class="flex justify-between mb-1.5">
@@ -365,12 +365,13 @@ const logoutConfirm = ref({ open: false, loading: false })
 // Smart weather state
 const weatherData = ref({ 
   temp: 0, 
-  condition: 'Checking...', 
+  condition: 'Memeriksa...', 
   icon: markRaw(SunIcon),
   themeWidget: 'bg-white text-gray-700',
   sidebarColor: 'from-[#0f8cd5]'
 })
 const themeClass = ref('bg-[#f0f2f5]')
+const accentColor = ref('#0f8cd5')
 
 // Fetch weather from Open-Meteo for Cileungsi
 async function fetchWeather() {
@@ -383,35 +384,40 @@ async function fetchWeather() {
     const isRain = curr.weather_code >= 51 && curr.weather_code <= 99
     
         let icon = SunIcon
-    let conditionText = 'Clear'
+    let conditionText = 'Cerah'
     let bgTheme = 'bg-[#f0f2f5]' 
     let widgetTheme = 'bg-blue-50 text-blue-600'
     let sidebarColor = 'from-[#0f8cd5]'
+    let accent = '#0f8cd5'
 
     if (isRain) {
       icon = CloudRainIcon
-      conditionText = 'Rain'
+      conditionText = 'Hujan'
       bgTheme = 'bg-[#e5e7eb]'
       widgetTheme = 'bg-gray-200 text-gray-700'
       sidebarColor = 'from-[#64748b]'
+      accent = '#64748b'
     } else if (curr.is_day === 0) {
       icon = MoonIcon
-      conditionText = 'Night'
+      conditionText = 'Malam'
       bgTheme = 'bg-[#1e293b]'
       widgetTheme = 'bg-indigo-900 text-indigo-200'
       sidebarColor = 'from-[#1e1b4b]'
+      accent = '#4338ca'
     } else if (hour >= 15 && hour < 18) {
       icon = SunIcon
-      conditionText = 'Afternoon'
+      conditionText = 'Sore'
       bgTheme = 'bg-[#fed7aa]'
       widgetTheme = 'bg-orange-100 text-orange-600'
       sidebarColor = 'from-[#f97316]'
+      accent = '#f97316'
     } else {
       icon = hour < 10 ? SunIcon : CloudIcon
-      conditionText = hour < 10 ? 'Morning' : 'Cloudy'
+      conditionText = hour < 10 ? 'Pagi' : 'Berawan'
       bgTheme = 'bg-[#f0f2f5]'
       widgetTheme = 'bg-sky-100 text-sky-600'
       sidebarColor = 'from-[#0f8cd5]'
+      accent = '#0f8cd5'
     }
 
         weatherData.value = {
@@ -422,6 +428,7 @@ async function fetchWeather() {
       sidebarColor
     }
     themeClass.value = bgTheme
+    accentColor.value = accent
 
   } catch (error) {
     console.error("Failed to fetch weather data:", error)
@@ -434,10 +441,10 @@ const navItems = [
 ]
 
 const hourOptions = [
-  { label: 'Last 6h', value: 6 },
-  { label: 'Last 24h', value: 24 },
-  { label: 'Last 48h', value: 48 },
-  { label: 'Last 7 days', value: 168 },
+  { label: '6 Jam Terakhir', value: 6 },
+  { label: '24 Jam Terakhir', value: 24 },
+  { label: '48 Jam Terakhir', value: 48 },
+  { label: '7 Hari Terakhir', value: 168 },
 ]
 
 // Room activity — will be dynamic from InfluxDB later
@@ -494,7 +501,7 @@ function connectWebSocket() {
   stompClient.activate()
 }
 
-// --- Relay off validation flow ---
+// Relay off validation flow
 function askTurnOff(room) {
   relayConfirm.value = { open: true, room, loading: false }
 }
@@ -516,7 +523,7 @@ function cancelTurnOff() {
   relayConfirm.value = { open: false, room: null, loading: false }
 }
 
-// --- Logout validation flow ---
+// Logout validation flow
 function askLogout() {
   logoutConfirm.value = { open: true, loading: false }
 }
