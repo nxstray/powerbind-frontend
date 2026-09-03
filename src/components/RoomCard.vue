@@ -1,19 +1,59 @@
 <template>
   <div class="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3">
     <!-- Header -->
-    <div class="flex items-start justify-between">
+    <div class="flex items-start justify-between gap-2">
       <div class="min-w-0">
         <p class="text-sm font-semibold text-gray-900 truncate">{{ room.name }}</p>
         <p class="text-[10px] text-gray-400 mt-0.5 truncate">{{ room.mqttTopic }}</p>
       </div>
-      <span
-        :class="room.presenceDetected
-          ? 'bg-[#7ADAA5]/20 text-[#16a34a]'
-          : 'bg-gray-100 text-gray-400'"
-        class="text-[10px] font-semibold px-2 py-0.5 rounded-lg shrink-0 ml-2"
-      >
-        {{ room.presenceDetected ? 'Occupied' : 'Empty' }}
-      </span>
+
+      <div class="flex items-center gap-1.5 shrink-0">
+        <!-- Power toggle — small round icon button. Green = relay on, red = relay off.
+             Desktop: a click opens the confirmation dialog directly.
+             Mobile: press-and-hold with a filling ring, then the confirmation dialog opens. -->
+        <button
+          type="button"
+          :disabled="!room.relayOn"
+          @click="handleClick"
+          @pointerdown="handlePointerDown"
+          @pointerup="cancelHold"
+          @pointerleave="cancelHold"
+          @pointercancel="cancelHold"
+          class="relative w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300 select-none touch-none"
+          :class="room.relayOn
+            ? 'bg-[#16a34a] text-white hover:bg-[#15803d] cursor-pointer'
+            : 'bg-red-600 text-white hover:bg-red-700 cursor-default'"
+          :title="room.relayOn ? 'Tahan untuk mematikan perangkat' : 'Perangkat sudah mati'"
+        >
+          <PowerIcon :size="14" />
+
+          <!-- Hold-to-confirm progress ring (mobile only) -->
+          <svg v-if="room.relayOn" class="absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 28 28">
+            <circle
+              cx="14" cy="14" r="11.5"
+              fill="none"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+              :stroke-dasharray="circumference"
+              :stroke-dashoffset="holding ? 0 : circumference"
+              :style="{
+                transition: holding ? `stroke-dashoffset ${HOLD_MS}ms linear` : 'stroke-dashoffset 200ms ease-out',
+                opacity: holding ? 0.9 : 0
+              }"
+            />
+          </svg>
+        </button>
+
+        <span
+          :class="room.presenceDetected
+            ? 'bg-[#7ADAA5]/20 text-[#16a34a]'
+            : 'bg-gray-100 text-gray-400'"
+          class="text-[10px] font-semibold px-2 py-0.5 rounded-lg shrink-0"
+        >
+          {{ room.presenceDetected ? 'Occupied' : 'Empty' }}
+        </span>
+      </div>
     </div>
 
     <!-- Presence indicator bar -->
@@ -55,45 +95,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Power toggle — round icon button. Green = relay on, red = relay off.
-         Desktop: a click opens the confirmation dialog directly.
-         Mobile: press-and-hold with a filling ring, then the confirmation dialog opens. -->
-    <div class="flex items-center justify-center pt-1">
-      <button
-        type="button"
-        :disabled="!room.relayOn"
-        @click="handleClick"
-        @pointerdown="handlePointerDown"
-        @pointerup="cancelHold"
-        @pointerleave="cancelHold"
-        @pointercancel="cancelHold"
-        class="relative w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-300 select-none touch-none"
-        :class="room.relayOn
-          ? 'bg-[#16a34a] text-white hover:bg-[#15803d] cursor-pointer'
-          : 'bg-red-500 text-white opacity-60 cursor-default'"
-        :title="room.relayOn ? 'Tahan untuk mematikan perangkat' : 'Perangkat sudah mati'"
-      >
-        <PowerIcon :size="18" />
-
-        <!-- Hold-to-confirm progress ring (mobile only) -->
-        <svg v-if="room.relayOn" class="absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 44 44">
-          <circle
-            cx="22" cy="22" r="19"
-            fill="none"
-            stroke="white"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            :stroke-dasharray="circumference"
-            :stroke-dashoffset="holding ? 0 : circumference"
-            :style="{
-              transition: holding ? `stroke-dashoffset ${HOLD_MS}ms linear` : 'stroke-dashoffset 200ms ease-out',
-              opacity: holding ? 0.9 : 0
-            }"
-          />
-        </svg>
-      </button>
-    </div>
   </div>
 </template>
 
@@ -108,7 +109,7 @@ const props = defineProps({
 const emit = defineEmits(['request-off'])
 
 const HOLD_MS = 800
-const circumference = 2 * Math.PI * 19
+const circumference = 2 * Math.PI * 11.5
 
 const holding = ref(false)
 const isTouch = ref(false)
