@@ -14,7 +14,7 @@
     </div>
 
     <div
-      class="w-full flex items-center border rounded-2xl pl-4 pr-2 py-2 shadow-sm transition-all"
+      class="w-full flex items-end border rounded-2xl pl-4 pr-2 py-2 shadow-sm transition-all"
       :class="isDark ? 'bg-[#1e293b]/80 border-white/10' : 'bg-white border-gray-200'"
     >
       <!-- Attach file button -->
@@ -35,16 +35,17 @@
       />
 
       <textarea
+        ref="textareaEl"
         :value="input"
-        @input="$emit('update:input', $event.target.value)"
+        @input="onInput"
         @keydown.enter.exact.prevent="$emit('send')"
         rows="1"
-        placeholder="Tanya soal pemakaian energi hari ini..."
-        class="flex-1 bg-transparent border-none outline-none text-sm md:text-base placeholder-gray-400 w-full py-2 px-2 resize-none leading-relaxed max-h-28 overflow-y-auto"
+        placeholder="Tanya soal pemakaian energi hari ini"
+        class="chat-input-textarea flex-1 bg-transparent border-none outline-none text-sm md:text-base placeholder-gray-400 w-full py-2 px-2 resize-none leading-relaxed overflow-y-auto transition-[height] duration-100 ease-out"
         :class="isDark ? 'text-white' : 'text-gray-800'"
       />
 
-      <!-- Voice input — lingkaran hover, senada dengan tombol attach -->
+      <!-- Voice input — circle on hover, consistent with the attach button -->
       <button
         @click="$emit('toggle-voice')"
         :class="[
@@ -56,7 +57,7 @@
         <MicIcon :size="16" />
       </button>
 
-      <!-- Send — tanpa lingkaran permanen, hanya muncul saat hover -->
+      <!-- Send — no permanent circle, only shows on hover -->
       <button
         @click="$emit('send')"
         data-testid="send-button"
@@ -74,14 +75,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick, watch } from 'vue'
 import SendIcon from '@/components/icons/SendIcon.vue'
 import MicIcon from '@/components/icons/MicIcon.vue'
 import PaperclipIcon from '@/components/icons/PaperClipIcon.vue'
 import FileIcon from '@/components/icons/FileIcon.vue'
 import CloseIcon from '@/components/icons/CloseIcon.vue'
 
-defineProps({
+const props = defineProps({
   input: { type: String, required: true },
   pendingFile: { type: [File, null], default: null },
   pendingFilePreview: { type: [String, null], default: null },
@@ -93,6 +94,30 @@ defineProps({
 const emit = defineEmits(['update:input', 'send', 'toggle-voice', 'file-select', 'clear-file'])
 
 const fileInputEl = ref(null)
+const textareaEl = ref(null)
+
+// Max textarea height before scrolling kicks in — above this the content scrolls,
+// below this the box itself stretches to fit the text.
+const MAX_HEIGHT_PX = 240
+
+function resizeTextarea() {
+  const el = textareaEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  const next = Math.min(el.scrollHeight, MAX_HEIGHT_PX)
+  el.style.height = `${next}px`
+  el.style.overflowY = el.scrollHeight > MAX_HEIGHT_PX ? 'auto' : 'hidden'
+}
+
+function onInput(e) {
+  emit('update:input', e.target.value)
+  nextTick(resizeTextarea)
+}
+
+// Reset height when the input is cleared externally (e.g. after a message is sent)
+watch(() => props.input, (val) => {
+  if (!val) nextTick(resizeTextarea)
+})
 
 function onFileChange(e) {
   const file = e.target.files[0]
