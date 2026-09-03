@@ -6,10 +6,10 @@
       <i style="--clr:#f97316;"></i>
 
       <!-- Card: Only input box -->
-      <div class="w-75 flex flex-col items-center gap-5">
+      <div class="w-66 flex flex-col items-center gap-4">
         <img src="/favicon.ico" alt="Powerbind" class="w-10 h-10" />
 
-        <form @submit.prevent="handleLogin" class="w-full flex flex-col gap-4">
+        <form @submit.prevent="handleLogin" class="w-full flex flex-col gap-3">
           <div class="inputBx">
             <input
               v-model="form.username"
@@ -22,10 +22,21 @@
           <div class="inputBx">
             <input
               v-model="form.password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               placeholder="Password"
               required
+              class="pr-9"
             />
+            <button
+              type="button"
+              class="eyeToggle"
+              tabindex="-1"
+              @click="showPassword = !showPassword"
+              :aria-label="showPassword ? 'Sembunyikan password' : 'Tampilkan password'"
+            >
+              <EyeOffIcon v-if="showPassword" :size="16" />
+              <EyeIcon v-else :size="16" />
+            </button>
           </div>
 
           <p v-if="errorMsg" class="text-xs text-red-500 text-center -mt-1">{{ errorMsg }}</p>
@@ -47,6 +58,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import EyeIcon from '@/components/icons/EyeIcon.vue'
+import EyeOffIcon from '@/components/icons/EyeOffIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -54,6 +67,7 @@ const authStore = useAuthStore()
 const form = ref({ username: '', password: '' })
 const loading = ref(false)
 const errorMsg = ref('')
+const showPassword = ref(false)
 
 async function handleLogin() {
   loading.value = true
@@ -120,11 +134,11 @@ async function handleLogin() {
 }
 .inputBx input {
   width: 100%;
-  padding: 0.65rem 1.1rem;
+  padding: 0.5rem 0.9rem;
   background: white;
   border: 1.5px solid #e5e7eb;
-  border-radius: 0.75rem;
-  font-size: 0.9rem;
+  border-radius: 0.65rem;
+  font-size: 0.85rem;
   color: #111827;
   outline: none;
   transition: 0.2s;
@@ -136,13 +150,45 @@ async function handleLogin() {
 .inputBx input::placeholder {
   color: #9ca3af;
 }
+
+/* Eye toggle button */
+.eyeToggle {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  background: transparent;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.eyeToggle:hover {
+  color: #0f8cd5;
+}
+
+/* Sign in button — smaller size + hover animation */
 .inputBx input[type='submit'] {
   cursor: pointer;
   border: none;
   color: white;
   font-weight: 600;
   background: linear-gradient(45deg, #0f8cd5, #38bdf8);
+  background-size: 200% 200%;
+  background-position: 0% 50%;
   text-align: center;
+  transition: background-position 0.5s ease, transform 0.15s ease, box-shadow 0.3s ease;
+}
+.inputBx input[type='submit']:hover:not(:disabled) {
+  background-position: 100% 50%;
+  box-shadow: 0 4px 14px rgba(15, 140, 213, 0.35);
+}
+.inputBx input[type='submit']:active:not(:disabled) {
+  transform: translateY(0);
 }
 .inputBx input[type='submit']:disabled {
   opacity: 0.6;
