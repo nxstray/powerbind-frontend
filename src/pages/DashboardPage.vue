@@ -47,7 +47,8 @@
       <div class="px-2 pb-2 hidden md:block shrink-0">
         <button
           @click="sidebarCollapsed = !sidebarCollapsed"
-          class="w-full flex items-center justify-center py-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition"
+          class="w-full flex items-center justify-center py-2 rounded-xl transition"
+          :class="isDark ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-gray-800/70 hover:text-gray-900 hover:bg-black/10'"
         >
           <ChevronLeftIcon :size="16" :class="sidebarCollapsed ? 'rotate-180' : ''" class="transition-transform duration-300" />
         </button>
@@ -63,7 +64,12 @@
               <p class="text-xs font-semibold text-white truncate">{{ authStore.user?.displayName || 'Admin' }}</p>
               <p class="text-[10px] text-white/50 truncate">{{ authStore.user?.username || 'admin' }}</p>
             </div>
-            <button @click="askLogout" class="text-white/40 hover:text-white transition shrink-0" title="Logout">
+            <button
+              @click="askLogout"
+              class="transition shrink-0"
+              :class="isDark ? 'text-white/40 hover:text-white' : 'text-gray-800/70 hover:text-gray-900'"
+              title="Logout"
+            >
               <LogOutIcon :size="15" />
             </button>
           </template>
@@ -261,7 +267,7 @@
               </div>
             </div>
 
-            <div class="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
+            <div class="self-start bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
               <h2 class="text-sm font-bold text-gray-900 mb-1">Aktivitas Ruangan</h2>
               <p class="text-xs text-gray-400 mb-4">Jumlah deteksi hari ini</p>
               <div class="space-y-3">
@@ -372,6 +378,7 @@ const weatherData = ref({
 })
 const themeClass = ref('bg-[#f0f2f5]')
 const accentColor = ref('#0f8cd5')
+const isDark = ref(false)
 
 // Fetch weather from Open-Meteo for Cileungsi
 async function fetchWeather() {
@@ -389,6 +396,7 @@ async function fetchWeather() {
     let widgetTheme = 'bg-blue-50 text-blue-600'
     let sidebarColor = 'from-[#0f8cd5]'
     let accent = '#0f8cd5'
+    let night = false
 
     if (isRain) {
       icon = CloudRainIcon
@@ -404,6 +412,7 @@ async function fetchWeather() {
       widgetTheme = 'bg-indigo-900 text-indigo-200'
       sidebarColor = 'from-[#1e1b4b]'
       accent = '#4338ca'
+      night = true
     } else if (hour >= 15 && hour < 18) {
       icon = SunIcon
       conditionText = 'Sore'
@@ -429,6 +438,7 @@ async function fetchWeather() {
     }
     themeClass.value = bgTheme
     accentColor.value = accent
+    isDark.value = night
 
   } catch (error) {
     console.error("Failed to fetch weather data:", error)
