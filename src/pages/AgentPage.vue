@@ -1,6 +1,6 @@
 <template>
   <Toast :toasts="anomalyToasts" @dismiss="dismissToast" />
-  <div class="min-h-screen flex transition-colors duration-1000 ease-in-out" :class="themeClass">
+  <div class="min-h-screen flex transition-colors duration-1000 ease-in-out" :class="themeClass" :style="{ '--accent-color': accentColor }">
 
     <!-- Mobile overlay -->
     <div v-if="sidebarOpen" class="fixed inset-0 bg-black/40 z-20 md:hidden" @click="sidebarOpen = false" />
@@ -77,8 +77,7 @@
           <div
             v-if="!editingTitle"
             @click="startEditTitle"
-            class="inline-flex items-center max-w-35 sm:max-w- px-2.5 py-1 rounded-lg border text-xs font-medium truncate cursor-text transition hover:opacity-80"
-            :style="{ borderColor: accentColor + '55', color: accentColor }"
+            class="inline-flex items-center max-w-35 sm:max-w- px-2.5 py-1 rounded-lg border border-transparent text-xs font-medium truncate cursor-text transition hover:opacity-80 text-white"
             title="Klik untuk ganti nama percakapan"
           >
             <span class="truncate">{{ activeConversationTitle }}</span>
@@ -128,11 +127,12 @@
                 </div>
                 <div
                   v-for="conv in conversations" :key="conv.id"
-                  class="group flex items-center justify-between px-3 py-2.5 text-xs cursor-pointer transition"
+                  class="conv-item group flex items-center justify-between px-3 py-2.5 text-xs cursor-pointer transition border-b last:border-b-0"
                   :class="[
                     conv.id === activeConversationId ? (isDark ? 'bg-white/10' : 'bg-gray-50') : '',
-                    isDark ? 'text-white/70 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50'
+                    isDark ? 'text-white/70 hover:bg-white/5 border-white/5' : 'text-gray-600 hover:bg-gray-50 border-gray-50'
                   ]"
+                  :style="{ '--accent-color': accentColor }"
                   @click="loadConversation(conv.id)"
                 >
                   <span class="truncate flex-1">{{ conv.title || 'Percakapan tanpa judul' }}</span>
@@ -169,6 +169,7 @@
                   :isDark="isDark"
                   :isRecording="isRecording"
                   :streaming="streaming"
+                  :accentColor="accentColor"
                   @send="send"
                   @toggle-voice="toggleVoice"
                   @file-select="handleFileSelect"
@@ -223,6 +224,7 @@
             :isDark="isDark"
             :isRecording="isRecording"
             :streaming="streaming"
+            :accentColor="accentColor"
             @send="send"
             @toggle-voice="toggleVoice"
             @file-select="handleFileSelect"
