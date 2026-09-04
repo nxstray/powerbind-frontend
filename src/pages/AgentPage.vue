@@ -198,7 +198,9 @@
               <div class="bg-[#f3f4f6] px-6 py-3.5 rounded-3xl rounded-br-sm shadow-sm" :class="isDark ? 'bg-white/10' : ''">
                 <p :class="isDark ? 'text-white' : 'text-gray-800'" class="text-sm md:text-base leading-relaxed whitespace-pre-wrap">{{ msg.content }}</p>
                 <!-- Timestamp now follows the theme so it stays legible in dark mode -->
-                <p class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">{{ msg.time }}</p>
+                <p class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">
+                  {{ msg.time }}<span v-if="msg.rawTime" class="ml-1">· {{ relativeTime(msg.rawTime) }}</span>
+                </p>
               </div>
             </div>
 
@@ -206,7 +208,9 @@
             <div v-else class="self-start max-w-full md:max-w-[85%] w-full">
               <MarkdownRenderer :content="msg.content" :class="isDark ? 'text-gray-200' : 'text-gray-700'" class="text-sm md:text-base" />
               <!-- Timestamp now follows the theme so it stays legible in dark mode -->
-              <p class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">{{ msg.time }}</p>
+              <p class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">
+                {{ msg.time }}<span v-if="msg.rawTime" class="ml-1">· {{ relativeTime(msg.rawTime) }}</span>
+              </p>
             </div>
 
           </div>
@@ -257,6 +261,7 @@
   <ConfirmDialog
     :open="logoutConfirm.open"
     :loading="logoutConfirm.loading"
+    danger
     title="Keluar dari Akun"
     message="Kamu akan keluar dari sesi ini. Lanjutkan?"
     confirm-text="Keluar"
@@ -280,7 +285,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
@@ -456,6 +461,22 @@ function timeFormat(dateStr) {
   return new Date(dateStr).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Ticks every minute so "X menit yang lalu" labels update on their own
+// without needing a page refresh.
+const nowTick = ref(Date.now())
+let nowTickTimer = null
+
+function relativeTime(rawTime) {
+  if (!rawTime) return ''
+  const diffMin = Math.floor((nowTick.value - rawTime) / 60000)
+  if (diffMin < 1) return 'baru saja'
+  if (diffMin < 60) return `${diffMin} menit yang lalu`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour} jam yang lalu`
+  const diffDay = Math.floor(diffHour / 24)
+  return `${diffDay} hari yang lalu`
+}
+
 async function scrollToBottom() {
   await nextTick()
   if (messagesEl.value) {
@@ -545,6 +566,7 @@ async function fetchConversationMessages(id) {
       role: h.role === 'assistant' ? 'agent' : 'user',
       content: h.content,
       time: timeFormat(h.createdAt),
+      rawTime: new Date(h.createdAt).getTime(),
     }))
     loadedConversationId.value = id
     localStorage.setItem(LAST_CONVERSATION_KEY, id)
@@ -668,6 +690,7 @@ async function send() {
     role: 'user',
     content: text || (isImage ? 'Analisis gambar ini' : `Analisis dokumen: ${file?.name}`),
     time: timeNow(),
+    rawTime: Date.now(),
   }
   if (file) {
     userMsg.attachment = { name: file.name, isImage, previewUrl }
@@ -679,7 +702,7 @@ async function send() {
   streaming.value = true
 
   const agentMsgId = Date.now() + 1
-  messages.value.push({ id: agentMsgId, role: 'agent', content: '', time: timeNow()})
+  messages.value.push({ id: agentMsgId, role: 'agent', content: '', time: timeNow(), rawTime: Date.now() })
 
   // Bring the start of the agent's reply into view once, then let it
   // stream in place — no more auto-scrolling on every chunk, so the page
@@ -770,6 +793,7 @@ function cancelLogout() {
 
 onMounted(async () => {
   fetchWeather()
+  nowTickTimer = setInterval(() => { nowTick.value = Date.now() }, 60000)
   document.addEventListener('click', handleOutsideClick)
   try { await authStore.fetchProfile() } catch (_) {}
   await loadConversationList()
@@ -791,7 +815,15 @@ onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick)
   clearPendingFile()
   clearInterval(typeTimer)
+  clearInterval(nowTickTimer)
   if (anomalyStompClient) anomalyStompClient.deactivate()
+})
+
+// Re-entering the page via keep-alive (e.g. Dashboard -> Agent) should land
+// on the newest message, not wherever the view happened to be scrolled
+// before navigating away.
+onActivated(() => {
+  scrollToBottom()
 })
 </script>
 
