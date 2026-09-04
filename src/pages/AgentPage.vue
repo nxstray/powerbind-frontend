@@ -27,7 +27,8 @@
           :title="sidebarCollapsed ? item.name : ''"
         >
           <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300" :class="item.name === 'Gemono' ? 'group-hover:animate-pulse' : ''" />
-          <span v-if="!sidebarCollapsed">{{ item.name }}</span>
+          <!-- Nudged down 1px so the label baseline sits level with the icon -->
+          <span v-if="!sidebarCollapsed" class="relative top-px">{{ item.name }}</span>
         </button>
       </nav>
 
@@ -152,11 +153,11 @@
       </div>
 
       <!-- Chat History Area -->
-      <main ref="messagesEl" class="custom-scroll flex-1 overflow-y-auto px-4 md:px-8 pb-4 flex flex-col">
-        <div class="max-w-3xl mx-auto w-full flex flex-col gap-6 flex-1" :class="messages.length === 0 ? 'justify-center' : ''">
+      <main ref="messagesEl" @scroll="onMessagesScroll" class="custom-scroll flex-1 overflow-y-auto px-4 md:px-8 pb-4 flex flex-col">
+        <div class="max-w-3xl mx-auto w-full flex flex-col gap-6 flex-1" :class="messages.length === 0 && !loadingConversation ? 'justify-center' : ''">
 
-          <!-- Empty State -->
-          <div v-if="messages.length === 0" class="text-center">
+          <!-- Empty State — suppressed while we're still fetching an active conversation so it never flashes on navigation back -->
+          <div v-if="messages.length === 0 && !loadingConversation" class="text-center">
             <h2 class="text-2xl md:text-3xl font-bold font-doto" :class="isDark ? 'text-white' : 'text-gray-800'">
               {{ typedGreeting }}<span class="typewriter-cursor" aria-hidden="true">|</span>
             </h2>
@@ -182,7 +183,7 @@
           </div>
 
           <!-- Message Bubbles -->
-          <div v-for="msg in messages" :key="msg.id" class="flex flex-col">
+          <div v-for="msg in messages" :key="msg.id" :id="`msg-${msg.id}`" class="flex flex-col">
 
             <!-- User Message -->
             <div v-if="msg.role === 'user'" class="self-end max-w-[85%] md:max-w-[75%]">
@@ -196,14 +197,16 @@
               </div>
               <div class="bg-[#f3f4f6] px-6 py-3.5 rounded-3xl rounded-br-sm shadow-sm" :class="isDark ? 'bg-white/10' : ''">
                 <p :class="isDark ? 'text-white' : 'text-gray-800'" class="text-sm md:text-base leading-relaxed whitespace-pre-wrap">{{ msg.content }}</p>
-                <p class="text-[10px] mt-1.5 opacity-40">{{ msg.time }}</p>
+                <!-- Timestamp now follows the theme so it stays legible in dark mode -->
+                <p class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">{{ msg.time }}</p>
               </div>
             </div>
 
             <!-- Agent message — no sparkles avatar / gradient background -->
             <div v-else class="self-start max-w-full md:max-w-[85%] w-full">
               <MarkdownRenderer :content="msg.content" :class="isDark ? 'text-gray-200' : 'text-gray-700'" class="text-sm md:text-base" />
-              <p class="text-[10px] mt-1.5 opacity-40">{{ msg.time }}</p>
+              <!-- Timestamp now follows the theme so it stays legible in dark mode -->
+              <p class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">{{ msg.time }}</p>
             </div>
 
           </div>
@@ -216,6 +219,19 @@
         </div>
       </main>
 
+      <!-- Scroll-to-bottom button — appears once the user has scrolled up, hides again near the bottom -->
+      <Transition name="fade">
+        <button
+          v-if="showScrollButton"
+          @click="scrollToBottom"
+          class="absolute right-4 md:right-8 bottom-24 md:bottom-28 z-20 w-9 h-9 rounded-full shadow-md flex items-center justify-center transition hover:scale-105"
+          :class="isDark ? 'bg-[#1e293b] text-white/80 border border-white/10' : 'bg-white text-gray-600 border border-gray-100'"
+          title="Ke pesan terbaru"
+        >
+          <ChevronLeftIcon :size="15" class="-rotate-90" />
+        </button>
+      </Transition>
+
       <!-- Chat input area — placed at the bottom once the conversation has started -->
       <div v-if="messages.length > 0" class="shrink-0 px-4 md:px-8 pb-6 md:pb-8">
         <div class="max-w-3xl mx-auto w-full">
@@ -226,7 +242,7 @@
             :isDark="isDark"
             :isRecording="isRecording"
             :streaming="streaming"
-                  :accentColor="accentColor"
+            :accentColor="accentColor"
             @send="send"
             @toggle-voice="toggleVoice"
             @file-select="handleFileSelect"
@@ -285,6 +301,11 @@ import CloseIcon from '@/components/icons/CloseIcon.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
+// Lets <keep-alive include="AgentPage"> (see note at the bottom of this file)
+// recognize this component so the whole page — including the currently
+// loaded conversation — survives navigating away and back.
+defineOptions({ name: 'AgentPage' })
+
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -299,11 +320,23 @@ const isRecording = ref(false)
 let mediaRecorder = null
 let audioChunks = []
 
+// True only while an existing conversation's messages are being fetched —
+// keeps the greeting/empty-state from flashing before they load in.
+const loadingConversation = ref(false)
+
+// Whether the user has scrolled away from the bottom of the chat
+const showScrollButton = ref(false)
+
 // File attachment state
 const pendingFile = ref(null)
 const pendingFilePreview = ref(null)
 
 const activeConversationId = computed(() => route.params.id || null)
+
+// Remember the last active conversation across page navigation (e.g. going
+// to Dashboard and back) so returning to Gemono resumes it instead of
+// showing the greeting screen again.
+const LAST_CONVERSATION_KEY = 'gemono:lastConversationId'
 
 // History dropdown state
 const historyDropdownOpen = ref(false)
@@ -364,10 +397,15 @@ async function saveTitle() {
   }
 }
 
-const navItems = [
-  { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
-  { name: 'Gemono', routeName: 'agent', to: '/agent', icon: SparklesIcon },
-]
+// Gemono's link follows the last active conversation (if any) so navigating
+// away and clicking back into it from the sidebar resumes the same thread.
+const navItems = computed(() => {
+  const lastId = localStorage.getItem(LAST_CONVERSATION_KEY)
+  return [
+    { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
+    { name: 'Gemono', routeName: 'agent', to: lastId ? `/agent/${lastId}` : '/agent', icon: SparklesIcon },
+  ]
+})
 
 const weatherData = ref({ sidebarColor: 'from-[#0f8cd5]' })
 const themeClass = ref('bg-[#f0f2f5]')
@@ -425,6 +463,31 @@ async function scrollToBottom() {
   }
 }
 
+// Scrolls just far enough that the given message's top edge comes into
+// view, instead of jumping all the way to the bottom. Used once when the
+// agent's reply starts, so the reply appears at the top of the viewport and
+// the page doesn't keep getting pushed down as it streams in — the user
+// scrolls the rest of the way themselves if they want to.
+async function scrollMessageIntoView(id) {
+  await nextTick()
+  const container = messagesEl.value
+  const el = document.getElementById(`msg-${id}`)
+  if (!container || !el) return
+  const containerRect = container.getBoundingClientRect()
+  const elRect = el.getBoundingClientRect()
+  const offset = elRect.top - containerRect.top - 12
+  container.scrollTo({ top: container.scrollTop + offset, behavior: 'smooth' })
+}
+
+// Tracks how far the user has scrolled up, to show/hide the floating
+// "scroll to bottom" button.
+function onMessagesScroll() {
+  const el = messagesEl.value
+  if (!el) return
+  const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+  showScrollButton.value = distanceFromBottom > 120
+}
+
 function buildHistory() {
   return messages.value.slice(-10).map((m) => ({
     role: m.role === 'user' ? 'user' : 'assistant',
@@ -453,7 +516,7 @@ function startTypewriter() {
 // replay animation typewriter when messages is cleared (start new chat)
 watch(
   () => messages.value.length === 0,
-  (isEmpty) => { if (isEmpty) startTypewriter() },
+  (isEmpty) => { if (isEmpty && !loadingConversation.value) startTypewriter() },
 )
 
 // History dropdown
@@ -474,6 +537,7 @@ async function loadConversationList() {
 }
 
 async function fetchConversationMessages(id) {
+  loadingConversation.value = true
   try {
     const history = await agentService.getConversationMessages(id)
     messages.value = history.map((h) => ({
@@ -483,10 +547,14 @@ async function fetchConversationMessages(id) {
       time: timeFormat(h.createdAt),
     }))
     loadedConversationId.value = id
+    localStorage.setItem(LAST_CONVERSATION_KEY, id)
     await scrollToBottom()
   } catch (_) {
     console.warn('[Agent] Failed to load conversation')
+    localStorage.removeItem(LAST_CONVERSATION_KEY)
     router.replace('/agent')
+  } finally {
+    loadingConversation.value = false
   }
 }
 
@@ -499,6 +567,7 @@ function loadConversation(id) {
 function startNewChat() {
   historyDropdownOpen.value = false
   clearPendingFile()
+  localStorage.removeItem(LAST_CONVERSATION_KEY)
   if (route.params.id) router.push('/agent')
   else messages.value = []
 }
@@ -534,7 +603,7 @@ watch(
   (id) => {
     if (id === loadedConversationId.value) return
     if (id) fetchConversationMessages(id)
-    else { messages.value = []; loadedConversationId.value = null; startTypewriter() }
+    else { messages.value = []; loadedConversationId.value = null; localStorage.removeItem(LAST_CONVERSATION_KEY); startTypewriter() }
   },
 )
 
@@ -604,17 +673,18 @@ async function send() {
   input.value = ''
   clearPendingFile()
   streaming.value = true
-  await scrollToBottom()
 
   const agentMsgId = Date.now() + 1
   messages.value.push({ id: agentMsgId, role: 'agent', content: '', time: timeNow()})
 
+  // Bring the start of the agent's reply into view once, then let it
+  // stream in place — no more auto-scrolling on every chunk, so the page
+  // doesn't keep getting pushed down while the answer is still arriving.
+  await scrollMessageIntoView(agentMsgId)
+
   const onChunk = (chunk) => {
     const msg = messages.value.find((m) => m.id === agentMsgId)
-    if (msg) {
-      msg.content += chunk
-      scrollToBottom()
-    }
+    if (msg) msg.content += chunk
   }
   const wasNewConversation = !activeConversationId.value
   const onDone = async () => {
@@ -625,6 +695,7 @@ async function send() {
     if (wasNewConversation && conversations.value.length > 0) {
       const newId = conversations.value[0].id
       loadedConversationId.value = newId // Make sure to update loadedConversationId to avoid refetching
+      localStorage.setItem(LAST_CONVERSATION_KEY, newId)
       router.replace(`/agent/${newId}`)
     }
   }
@@ -700,8 +771,16 @@ onMounted(async () => {
   await loadConversationList()
   connectAnomalySocket()
 
-  if (route.params.id) await fetchConversationMessages(route.params.id)
-  else startTypewriter()
+  // Resume the conversation in the URL, or fall back to the last one this
+  // browser had open (e.g. after navigating away to Dashboard and back)
+  // before showing the empty greeting state.
+  const resumeId = route.params.id || localStorage.getItem(LAST_CONVERSATION_KEY)
+  if (resumeId) {
+    if (!route.params.id) router.replace(`/agent/${resumeId}`)
+    await fetchConversationMessages(resumeId)
+  } else {
+    startTypewriter()
+  }
 })
 
 onUnmounted(() => {
@@ -711,3 +790,14 @@ onUnmounted(() => {
   if (anomalyStompClient) anomalyStompClient.deactivate()
 })
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
