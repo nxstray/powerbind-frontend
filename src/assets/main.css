@@ -124,11 +124,13 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Chocolate Classical Sans', sans-serif;
+    font-family: 'Vazirmatn', sans-serif;
   }
 }
 
-/* Custom scrollbars */
+/* Custom scrollbar — used in the chat area, history dropdown, and sidebar nav.
+   Color follows the --accent-color set by the page (matches the weather/time theme),
+   with #0f8cd5 as the fallback when the variable is not set. */
 .custom-scroll {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 35%, transparent) transparent;
@@ -149,15 +151,35 @@
   background-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 60%, transparent);
 }
 
-/* History item */
+/* Chat history item — thin gray border when idle, turns into the theme accent color
+   when the item is hovered OR active (the currently open conversation) */
 .conv-item {
+  border-color: rgba(0, 0, 0, 0.06);
   transition: border-color 0.2s ease, background-color 0.2s ease;
 }
-.conv-item:hover {
-  border-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 40%, transparent);
+.conv-item--dark {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.conv-item:hover,
+.conv-item.conv-item--active {
+  border-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 55%, transparent);
 }
 
-/* Textarea chat input */
+/* "Chat History" dropdown trigger button — gray border when idle, turns into the accent color
+   on hover or while the dropdown is open (active) */
+.history-trigger {
+  border-color: rgba(0, 0, 0, 0.12);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.history-trigger--dark {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.history-trigger:hover,
+.history-trigger.history-trigger--active {
+  border-color: var(--accent-color, #0f8cd5);
+}
+
+/* Textarea chat input — no visible scrollbar, height follows content (auto-resized from JS) */
 .chat-input-textarea {
   scrollbar-width: none;
 }
@@ -167,7 +189,7 @@
   display: none;
 }
 
-/* Blinking cursor for typewriter effect */
+/* Blinking cursor for the typewriter greeting animation */
 .typewriter-cursor {
   display: inline-block;
   animation: blink-cursor 0.9s step-end infinite;
