@@ -20,28 +20,33 @@
     >
 
       <nav class="custom-scroll flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-        <button
+        <AppTooltip
           v-for="item in navItems"
           :key="item.name"
-          @click="$router.push(item.to); sidebarOpen = false"
-          :class="[
-            'w-full flex items-center rounded-xl text-sm font-medium transition group',
-            sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
-            $route.name === item.routeName
-              ? 'bg-white/20 text-white'
-              : 'text-white/60 hover:bg-white/10 hover:text-white'
-          ]"
-          :title="sidebarCollapsed ? item.name : ''"
+          :text="sidebarCollapsed ? item.name : ''"
+          position="right"
+          class="w-full"
         >
-          <!-- Icon animation logic: scale for all, rotation for sparkle, door opening for home -->
-          <component 
-            :is="item.icon" 
-            :size="17" 
-            class="shrink-0 transition-all duration-300"
-            :class="item.name === 'Gemono' ? 'group-hover:animate-pulse' : ''"
-          />
-          <span v-if="!sidebarCollapsed">{{ item.name }}</span>
-        </button>
+          <button
+            @click="$router.push(item.to); sidebarOpen = false"
+            :class="[
+              'w-full flex items-center rounded-xl text-sm font-medium transition group',
+              sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
+              $route.name === item.routeName
+                ? 'bg-white/20 text-white'
+                : 'text-white/60 hover:bg-white/10 hover:text-white'
+            ]"
+          >
+            <!-- Icon animation logic: scale for all, rotation for sparkle, door opening for home -->
+            <component 
+              :is="item.icon" 
+              :size="17" 
+              class="shrink-0 transition-all duration-300"
+              :class="item.name === 'Gemono' ? 'group-hover:animate-pulse' : ''"
+            />
+            <span v-if="!sidebarCollapsed">{{ item.name }}</span>
+          </button>
+        </AppTooltip>
       </nav>
 
       <div class="px-2 pb-2 hidden md:block shrink-0">
@@ -64,14 +69,15 @@
               <p class="text-xs font-semibold text-white truncate">{{ authStore.user?.displayName || 'Admin' }}</p>
               <p class="text-[10px] text-white/50 truncate">{{ authStore.user?.username || 'admin' }}</p>
             </div>
-            <button
-              @click="askLogout"
-              class="transition shrink-0"
-              :class="isDark ? 'text-white/40 hover:text-white' : 'text-gray-800/70 hover:text-gray-900'"
-              title="Logout"
-            >
-              <LogOutIcon :size="15" />
-            </button>
+            <AppTooltip text="Logout" position="right">
+              <button
+                @click="askLogout"
+                class="transition shrink-0"
+                :class="isDark ? 'text-white/40 hover:text-white' : 'text-gray-800/70 hover:text-gray-900'"
+              >
+                <LogOutIcon :size="15" />
+              </button>
+            </AppTooltip>
           </template>
         </div>
       </div>
@@ -98,12 +104,12 @@
         </div>
         
         <!-- Smart Weather Widget -->
-                <div class="flex items-center gap-3">
-                  <div 
-                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-sm border border-gray-100 transition-colors"
-                    :class="weatherData.themeWidget"
-                  >
-            <component :is="weatherData.icon" :size="14" />
+        <div class="flex items-center gap-3">
+          <div 
+            class="flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-sm border border-gray-100 transition-colors"
+            :class="weatherData.themeWidget"
+          >
+            <WeatherWidget :code="weatherData.code" :is-day="weatherData.isDay" :size="20" />
             <span class="text-xs font-bold">{{ weatherData.temp }}°C</span>
             <span class="text-[10px] opacity-80 hidden sm:block">{{ weatherData.condition }}</span>
           </div>
@@ -332,6 +338,8 @@ import PowerChart from '@/components/PowerChart.vue'
 import EnergyDonut from '@/components/EnergyDonut.vue'
 import RoomCard from '@/components/RoomCard.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AppTooltip from '@/components/AppTooltip.vue'
+import WeatherWidget from '@/components/WeatherWidget.vue'
 
 import BoltIcon from '@/components/icons/BoltIcon.vue'
 import HomeIcon from '@/components/icons/HomeIcon.vue'
@@ -373,6 +381,8 @@ const weatherData = ref({
   temp: 0, 
   condition: 'Memeriksa...', 
   icon: markRaw(SunIcon),
+  code: 0,
+  isDay: true,
   themeWidget: 'bg-white text-gray-700',
   sidebarColor: 'from-[#0f8cd5]'
 })
@@ -429,10 +439,12 @@ async function fetchWeather() {
       accent = '#0f8cd5'
     }
 
-        weatherData.value = {
+    weatherData.value = {
       temp: Math.round(curr.temperature_2m),
       condition: conditionText,
       icon: markRaw(icon),
+      code: curr.weather_code,
+      isDay: curr.is_day === 1,
       themeWidget: widgetTheme,
       sidebarColor
     }
