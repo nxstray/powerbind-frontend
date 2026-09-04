@@ -44,7 +44,7 @@
               class="shrink-0 transition-all duration-300"
               :class="item.name === 'Gemono' ? 'group-hover:animate-pulse' : ''"
             />
-            <span v-if="!sidebarCollapsed">{{ item.name }}</span>
+            <span v-if="!sidebarCollapsed" class="relative top-px">{{ item.name }}</span>
           </button>
         </AppTooltip>
       </nav>
