@@ -224,7 +224,7 @@
         <button
           v-if="showScrollButton"
           @click="scrollToBottom"
-          class="absolute right-4 md:right-8 bottom-24 md:bottom-28 z-20 w-9 h-9 rounded-full shadow-md flex items-center justify-center transition hover:scale-105"
+          class="absolute left-1/2 -translate-x-1/2 bottom-24 md:bottom-28 z-20 w-9 h-9 rounded-full shadow-md flex items-center justify-center transition hover:scale-105"
           :class="isDark ? 'bg-[#1e293b] text-white/80 border border-white/10' : 'bg-white text-gray-600 border border-gray-100'"
           title="Ke pesan terbaru"
         >
@@ -601,6 +601,10 @@ function cancelDeleteConversation() {
 watch(
   () => route.params.id,
   (id) => {
+    // Route changed because we navigated away entirely (e.g. to Dashboard) —
+    // keep-alive is about to deactivate this page, so leave `messages` as-is
+    // instead of clearing it. Only react while we're still on /agent(/:id).
+    if (route.name !== 'agent') return
     if (id === loadedConversationId.value) return
     if (id) fetchConversationMessages(id)
     else { messages.value = []; loadedConversationId.value = null; localStorage.removeItem(LAST_CONVERSATION_KEY); startTypewriter() }
