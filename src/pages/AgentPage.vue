@@ -5,7 +5,7 @@
     <!-- Mobile overlay -->
     <div v-if="sidebarOpen" class="fixed inset-0 bg-black/40 z-20 md:hidden" @click="sidebarOpen = false" />
 
-    <!-- Sidebar (Persis dengan DashboardPage) -->
+    <!-- Sidebar (identical to DashboardPage) -->
     <aside
       :class="[
         'fixed md:sticky top-0 h-screen z-30 flex flex-col transition-all duration-500',
@@ -66,18 +66,19 @@
     <!-- Main -->
     <div class="flex-1 flex flex-col min-w-0 relative h-screen">
 
-      <!-- Top bar: mobile menu + judul percakapan + history dropdown -->
+      <!-- Top bar: mobile menu + conversation title + history dropdown -->
       <div class="shrink-0 flex items-center justify-between gap-3 px-4 md:px-8 pt-4 md:pt-6 pb-2">
         <button @click="sidebarOpen = true" class="md:hidden text-gray-500 hover:text-gray-700" :class="isDark ? 'text-white/70' : ''">
           <MenuIcon :size="20" />
         </button>
 
-        <!-- Judul percakapan aktif — sejajar kiri dengan tombol Riwayat Chat, bisa diklik untuk rename -->
+        <!-- Active conversation title — left-aligned with the Chat History button, click to rename -->
         <div v-if="activeConversationId" class="flex-1 min-w-0">
           <div
             v-if="!editingTitle"
             @click="startEditTitle"
-            class="inline-flex items-center max-w-35 sm:max-w- px-2.5 py-1 rounded-lg border border-transparent text-xs font-medium truncate cursor-text transition hover:opacity-80 text-white"
+            class="inline-flex items-center max-w-35 sm:max-w- px-2.5 py-1 rounded-lg border border-transparent text-xs font-medium truncate cursor-text transition hover:opacity-80"
+            :style="{ color: accentColor }"
             title="Klik untuk ganti nama percakapan"
           >
             <span class="truncate">{{ activeConversationTitle }}</span>
@@ -100,8 +101,9 @@
           <div class="relative" ref="historyDropdownRef">
             <button
               @click="toggleHistoryDropdown"
-              class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition"
-              :class="isDark ? 'border-white/20 text-white/70 hover:bg-white/10' : 'border-gray-200 text-gray-600 hover:bg-gray-50 bg-white'"
+              class="history-trigger flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition"
+              :class="[isDark ? 'text-white/70 hover:bg-white/10 history-trigger--dark' : 'text-gray-600 hover:bg-gray-50 bg-white', historyDropdownOpen ? 'history-trigger--active' : '']"
+              :style="{ '--accent-color': accentColor }"
             >
               <HistoryIcon :size="13" />
               <span class="hidden sm:inline">Riwayat Chat</span>
@@ -129,8 +131,8 @@
                   v-for="conv in conversations" :key="conv.id"
                   class="conv-item group flex items-center justify-between px-3 py-2.5 text-xs cursor-pointer transition border-b last:border-b-0"
                   :class="[
-                    conv.id === activeConversationId ? (isDark ? 'bg-white/10' : 'bg-gray-50') : '',
-                    isDark ? 'text-white/70 hover:bg-white/5 border-white/5' : 'text-gray-600 hover:bg-gray-50 border-gray-50'
+                    conv.id === activeConversationId ? (isDark ? 'bg-white/10 conv-item--active' : 'bg-gray-50 conv-item--active') : '',
+                    isDark ? 'text-white/70 hover:bg-white/5 conv-item--dark' : 'text-gray-600 hover:bg-gray-50'
                   ]"
                   :style="{ '--accent-color': accentColor }"
                   @click="loadConversation(conv.id)"
@@ -159,7 +161,7 @@
               {{ typedGreeting }}<span class="typewriter-cursor" aria-hidden="true">|</span>
             </h2>
 
-            <!-- Input tampil di sini (tengah atas) selama belum ada percakapan -->
+            <!-- Input shown here (top center) until a conversation is started -->
             <div class="mt-6 flex justify-center">
               <div class="w-full max-w-2xl">
                 <ChatInputBar
@@ -198,7 +200,7 @@
               </div>
             </div>
 
-            <!-- Agent Message — tanpa avatar sparkles / background gradient -->
+            <!-- Agent message — no sparkles avatar / gradient background -->
             <div v-else class="self-start max-w-full md:max-w-[85%] w-full">
               <MarkdownRenderer :content="msg.content" :class="isDark ? 'text-gray-200' : 'text-gray-700'" class="text-sm md:text-base" />
               <p class="text-[10px] mt-1.5 opacity-40">{{ msg.time }}</p>
@@ -206,7 +208,7 @@
 
           </div>
 
-          <!-- Streaming Indicator — tanpa avatar sparkles -->
+          <!-- Streaming indicator — no sparkles avatar -->
           <div v-if="streaming" class="self-start flex gap-1 pt-1">
             <div v-for="i in 3" :key="i" class="w-2 h-2 rounded-full animate-bounce" :class="isDark ? 'bg-white/40' : 'bg-gray-400'" :style="{ animationDelay: (i - 1) * 0.2 + 's' }" />
           </div>
@@ -214,7 +216,7 @@
         </div>
       </main>
 
-      <!-- Chat Input Area — dipakukan di bawah begitu percakapan sudah mulai -->
+      <!-- Chat input area — placed at the bottom once the conversation has started -->
       <div v-if="messages.length > 0" class="shrink-0 px-4 md:px-8 pb-6 md:pb-8">
         <div class="max-w-3xl mx-auto w-full">
           <ChatInputBar
@@ -224,7 +226,7 @@
             :isDark="isDark"
             :isRecording="isRecording"
             :streaming="streaming"
-            :accentColor="accentColor"
+                  :accentColor="accentColor"
             @send="send"
             @toggle-voice="toggleVoice"
             @file-select="handleFileSelect"
@@ -320,15 +322,15 @@ const activeConversationTitle = computed(() => {
   return conv?.title || 'Percakapan tanpa judul'
 })
 
-// warna aksen mengikuti tema weather saat ini (dipakai untuk border/teks judul)
+// accent color follows the current weather theme (used for title border/text)
 const accentColor = ref('#0f8cd5')
 
-// rename judul percakapan inline
+// inline conversation title rename
 const editingTitle = ref(false)
 const titleDraft = ref('')
 const titleInputEl = ref(null)
 
-// lebar box rename mengikuti panjang teks yang diketik (min 6ch, max 40ch)
+// rename box width follows the typed text length (min 6ch, max 40ch)
 const titleInputWidth = computed(() => {
   const len = titleDraft.value.length || 1
   return Math.min(Math.max(len + 2, 6), 40) + 'ch'
@@ -358,7 +360,7 @@ async function saveTitle() {
     await agentService.renameConversation(activeConversationId.value, newTitle)
   } catch (_) {
     console.warn('[Agent] Failed to rename conversation')
-    if (conv) conv.title = previousTitle // rollback kalau backend menolak
+    if (conv) conv.title = previousTitle // rollback if the backend rejects
   }
 }
 
@@ -387,7 +389,7 @@ async function fetchWeather() {
     if (isRain) {
       bgTheme = 'bg-[#e5e7eb]'; sidebarColor = 'from-[#64748b]'; accent = '#64748b'
     } else if (curr.is_day === 0) {
-      // aksen dibuat lebih terang dari sidebarColor supaya tetap kontras di atas bg gelap
+      // accent is brighter than sidebarColor to keep contrast on the dark background
       bgTheme = 'bg-[#1e293b]'; sidebarColor = 'from-[#1e1b4b]'; accent = '#818cf8'; night = true
     } else if (hour >= 15 && hour < 18) {
       bgTheme = 'bg-[#fed7aa]'; sidebarColor = 'from-[#f97316]'; accent = '#f97316'
