@@ -18,10 +18,11 @@
       :class="isDark ? 'bg-[#1e293b]/80 chat-input-box--dark' : 'bg-white chat-input-box--light'"
       :style="{ '--chat-accent': accentColor }"
     >
-      <!-- Attach file button -->
+      <!-- Attach file button — sized to match the mic/send buttons on desktop
+           (md:w-10 md:h-10) so it sits level with them instead of lower -->
       <button
         @click="fileInputEl?.click()"
-        class="w-9 h-9 rounded-full flex items-center justify-center transition shrink-0"
+        class="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition shrink-0"
         :class="isDark ? 'text-gray-300 hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100'"
         title="Lampirkan gambar atau dokumen"
       >
