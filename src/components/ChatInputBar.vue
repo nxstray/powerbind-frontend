@@ -41,12 +41,12 @@
         @input="onInput"
         @keydown.enter.exact.prevent="$emit('send')"
         rows="1"
-        placeholder="Tanya soal pemakaian energi hari ini"
+        placeholder="Tanya soal pemakaian energi hari ini..."
         class="chat-input-textarea flex-1 bg-transparent border-none outline-none text-sm md:text-base placeholder-gray-400 w-full py-2 px-2 resize-none leading-relaxed overflow-y-auto transition-[height] duration-100 ease-out"
         :class="isDark ? 'text-white' : 'text-gray-800'"
       />
 
-      <!-- Voice input -->
+      <!-- Voice input — circle on hover, consistent with the attach button -->
       <button
         @click="$emit('toggle-voice')"
         :class="[
@@ -58,7 +58,7 @@
         <MicIcon :size="16" />
       </button>
 
-      <!-- Send Button -->
+      <!-- Send — no permanent circle, only shows on hover -->
       <button
         @click="$emit('send')"
         data-testid="send-button"
@@ -99,7 +99,8 @@ const emit = defineEmits(['update:input', 'send', 'toggle-voice', 'file-select',
 const fileInputEl = ref(null)
 const textareaEl = ref(null)
 
-// Hard limit the height of the textarea to avoid it growing too tall, and show a scrollbar if exceeded. The max-height is set to 240px, which is roughly 6 lines of text.
+// Max textarea height before scrolling kicks in — above this the content scrolls,
+// below this the box itself stretches to fit the text (like Claude's chat input).
 const MAX_HEIGHT_PX = 240
 
 function resizeTextarea() {
@@ -116,7 +117,7 @@ function onInput(e) {
   nextTick(resizeTextarea)
 }
 
-// Reset textarea height when input is cleared externally (e.g. after sending a message)
+// Reset height when the input is cleared externally (e.g. after a message is sent)
 watch(() => props.input, (val) => {
   if (!val) nextTick(resizeTextarea)
 })
@@ -135,18 +136,20 @@ function onFileChange(e) {
   border-style: solid;
 }
 .chat-input-box--light {
-  border-color: #e5e7eb; /* gray-200 */
+  border-color: #e5e7eb; /* gray-200, idle */
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
-.chat-input-box--light:hover {
+.chat-input-box--light:hover,
+.chat-input-box--light:focus-within {
   border-color: var(--chat-accent);
   box-shadow: 0 4px 14px color-mix(in srgb, var(--chat-accent) 22%, transparent);
 }
 .chat-input-box--dark {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1); /* idle */
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
-.chat-input-box--dark:hover {
+.chat-input-box--dark:hover,
+.chat-input-box--dark:focus-within {
   border-color: var(--chat-accent);
   box-shadow: 0 4px 16px color-mix(in srgb, var(--chat-accent) 35%, transparent);
 }
