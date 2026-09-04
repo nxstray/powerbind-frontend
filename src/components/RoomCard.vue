@@ -11,39 +11,40 @@
         <!-- Power toggle — small round icon button. Green = relay on, red = relay off.
              Desktop: a click opens the confirmation dialog directly.
              Mobile: press-and-hold with a filling ring, then the confirmation dialog opens. -->
-        <button
-          type="button"
-          :disabled="!room.relayOn"
-          @click="handleClick"
-          @pointerdown="handlePointerDown"
-          @pointerup="cancelHold"
-          @pointerleave="cancelHold"
-          @pointercancel="cancelHold"
-          class="relative w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300 select-none touch-none"
-          :class="room.relayOn
-            ? 'bg-[#16a34a] text-white hover:bg-[#15803d] cursor-pointer'
-            : 'bg-red-600 text-white hover:bg-red-700 cursor-default'"
-          :title="room.relayOn ? 'Tahan untuk mematikan perangkat' : 'Perangkat sudah mati'"
-        >
-          <PowerIcon :size="14" />
+        <AppTooltip :text="room.relayOn ? 'Tahan untuk mematikan perangkat' : 'Perangkat sudah mati'" position="top">
+          <button
+            type="button"
+            :disabled="!room.relayOn"
+            @click="handleClick"
+            @pointerdown="handlePointerDown"
+            @pointerup="cancelHold"
+            @pointerleave="cancelHold"
+            @pointercancel="cancelHold"
+            class="relative w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300 select-none touch-none"
+            :class="room.relayOn
+              ? 'bg-[#16a34a] text-white hover:bg-[#15803d] cursor-pointer'
+              : 'bg-red-600 text-white hover:bg-red-700 cursor-default'"
+          >
+            <PowerIcon :size="14" />
 
-          <!-- Hold-to-confirm progress ring (mobile only) -->
-          <svg v-if="room.relayOn" class="absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 28 28">
-            <circle
-              cx="14" cy="14" r="11.5"
-              fill="none"
-              stroke="white"
-              stroke-width="2"
-              stroke-linecap="round"
-              :stroke-dasharray="circumference"
-              :stroke-dashoffset="holding ? 0 : circumference"
-              :style="{
-                transition: holding ? `stroke-dashoffset ${HOLD_MS}ms linear` : 'stroke-dashoffset 200ms ease-out',
-                opacity: holding ? 0.9 : 0
-              }"
-            />
-          </svg>
-        </button>
+            <!-- Hold-to-confirm progress ring (mobile only) -->
+            <svg v-if="room.relayOn" class="absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 28 28">
+              <circle
+                cx="14" cy="14" r="11.5"
+                fill="none"
+                stroke="white"
+                stroke-width="2"
+                stroke-linecap="round"
+                :stroke-dasharray="circumference"
+                :stroke-dashoffset="holding ? 0 : circumference"
+                :style="{
+                  transition: holding ? `stroke-dashoffset ${HOLD_MS}ms linear` : 'stroke-dashoffset 200ms ease-out',
+                  opacity: holding ? 0.9 : 0
+                }"
+              />
+            </svg>
+          </button>
+        </AppTooltip>
 
         <span
           :class="room.presenceDetected
@@ -101,6 +102,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import PowerIcon from '@/components/icons/PowerIcon.vue'
+import AppTooltip from '@/components/AppTooltip.vue'
 
 const props = defineProps({
   room: { type: Object, required: true },
