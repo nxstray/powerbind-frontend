@@ -373,18 +373,61 @@ function boxHeight(table) {
   return HEAD_H + table.columns.length * ROW_H
 }
 
-// Simple masonry-style auto layout: each table goes into whichever column
-// currently has the least content, so nothing overlaps regardless of how
-// many entities exist or how tall each one is.
+// Layered graph layout (Sugiyama-style, simplified): tables are placed into
+// columns based on how many FK "hops" they are from a referenced-only root
+// table, so a cable never has to travel far or loop around unrelated boxes.
+// Within each column, tables are ordered by the average vertical position of
+// the tables they reference in the previous column (barycenter heuristic),
+// which keeps most cables flowing left-to-right instead of criss-crossing.
 function layoutTables(tables) {
-  const columns = Math.max(2, Math.ceil(Math.sqrt(tables.length)))
-  const colHeights = new Array(columns).fill(20)
-  for (const table of tables) {
-    let col = 0
-    for (let i = 1; i < columns; i++) if (colHeights[i] < colHeights[col]) col = i
-    positions[table.name] = { x: col * (BOX_W + GAP_X) + 20, y: colHeights[col] }
-    colHeights[col] += boxHeight(table) + GAP_Y
+  if (!tables.length) return
+  const byName = new Map(tables.map((t) => [t.name, t]))
+
+  const references = new Map(tables.map((t) => [t.name, new Set()]))
+  schema.relations.forEach((r) => {
+    if (references.has(r.from) && byName.has(r.to) && r.to !== r.from) {
+      references.get(r.from).add(r.to)
+    }
+  })
+
+  const layerCache = new Map()
+  function layerOf(name, visiting = new Set()) {
+    if (layerCache.has(name)) return layerCache.get(name)
+    if (visiting.has(name)) return 0 // break circular FK chains instead of recursing forever
+    visiting.add(name)
+    const refs = [...references.get(name)]
+    const layer = refs.length ? 1 + Math.max(...refs.map((r) => layerOf(r, visiting))) : 0
+    layerCache.set(name, layer)
+    return layer
   }
+  tables.forEach((t) => layerOf(t.name))
+
+  const layers = []
+  tables.forEach((t) => {
+    const l = layerCache.get(t.name)
+    if (!layers[l]) layers[l] = []
+    layers[l].push(t)
+  })
+
+  const orderIndex = new Map()
+  layers.forEach((layerTables) => {
+    const barycenter = (name) => {
+      const refs = [...references.get(name)].filter((r) => orderIndex.has(r))
+      if (!refs.length) return Number.MAX_SAFE_INTEGER
+      return refs.reduce((sum, r) => sum + orderIndex.get(r), 0) / refs.length
+    }
+    layerTables.sort((a, b) => barycenter(a.name) - barycenter(b.name))
+    layerTables.forEach((t, i) => orderIndex.set(t.name, i))
+  })
+
+  layers.forEach((layerTables, li) => {
+    const x = li * (BOX_W + GAP_X) + 20
+    let y = 20
+    layerTables.forEach((t) => {
+      positions[t.name] = { x, y }
+      y += boxHeight(t) + GAP_Y
+    })
+  })
 }
 
 async function loadSchema() {
@@ -632,4 +675,4 @@ onUnmounted(() => {
   window.removeEventListener('mousemove', onMove)
   window.removeEventListener('mouseup', onUp)
 })
-</script> 
+</script>
