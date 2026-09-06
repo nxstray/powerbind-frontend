@@ -54,44 +54,58 @@
     </aside>
 
     <div class="flex-1 flex flex-col min-w-0 h-screen">
-      <!-- Header: Logs volume chart (Loki-style) + trimmed toolbar (levels + range only) -->
-      <header
-        class="shrink-0 backdrop-blur-md border-b px-4 md:px-6 pt-3 pb-3"
-        :class="isDark ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-100'"
-      >
-        <div class="flex items-center gap-3 mb-3 md:hidden">
+      <!-- Logs volume — no card wrapper, spans the full canvas width -->
+      <div class="shrink-0 px-4 md:px-6 pt-3" :class="isDark ? 'bg-black/20' : 'bg-white/80'">
+        <div class="flex items-center gap-3 mb-1 md:hidden">
           <button @click="sidebarOpen = true" :class="isDark ? 'text-white/70' : 'text-gray-500'">
             <MenuIcon :size="20" />
           </button>
         </div>
-
         <LogsVolumeChart :logs="logs" :range="range" :is-dark="isDark" />
+      </div>
 
-        <div class="flex flex-wrap items-center gap-2 mt-3">
+      <!-- Boundary row, raised up to sit right above the panels: levels + range dropdown live here now -->
+      <div
+        class="shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 py-2.5 border-b backdrop-blur-md"
+        :class="isDark ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-100'"
+      >
+        <button
+          v-for="lvl in LEVEL_KEYS"
+          :key="lvl"
+          @click="toggleLevel(lvl)"
+          class="text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
+          :class="activeLevels.has(lvl) ? [chipActiveClass, LEVEL_TEXT[lvl]] : chipInactiveClass"
+        >
+          {{ lvl }}
+        </button>
+
+        <!-- Range dropdown — same trigger/panel/chevron animation pattern as the Power Usage chart on the dashboard -->
+        <div class="relative ml-auto" ref="rangeDropdownRef">
           <button
-            v-for="lvl in LEVEL_KEYS"
-            :key="lvl"
-            @click="toggleLevel(lvl)"
-            class="text-xs font-medium px-2.5 py-1.5 rounded-xl border transition"
-            :class="activeLevels.has(lvl) ? LEVEL_CHIP[lvl] : chipInactiveClass"
+            @click="rangeDropdownOpen = !rangeDropdownOpen"
+            class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
+            :class="isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:border-zinc-500' : 'bg-white border-gray-200 text-gray-600 hover:border-[#0f8cd5]'"
           >
-            {{ lvl }}
+            {{ rangeOptions.find((o) => o.value === range)?.label }}
+            <ChevronLeftIcon :size="12" :class="rangeDropdownOpen ? 'rotate-90' : '-rotate-90'" class="transition-transform" />
           </button>
-
-          <div class="relative ml-auto">
-            <select
-              v-model="range"
-              class="text-xs font-medium px-2.5 py-1.5 rounded-xl border appearance-none pr-6"
-              :class="isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200' : 'bg-white border-gray-200 text-gray-600'"
+          <div
+            v-if="rangeDropdownOpen"
+            class="absolute right-0 top-full mt-1 w-32 rounded-md shadow-lg z-10 overflow-hidden border"
+            :class="isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-100'"
+          >
+            <button
+              v-for="opt in rangeOptions"
+              :key="opt.value"
+              @click="selectRange(opt.value)"
+              class="w-full text-left px-3 py-2 text-xs transition"
+              :class="range === opt.value ? (isDark ? 'bg-white/10 text-white' : 'bg-[#0f8cd5]/10 text-[#0f8cd5]') : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50')"
             >
-              <option value="15m">15 menit</option>
-              <option value="1h">1 jam</option>
-              <option value="6h">6 jam</option>
-              <option value="24h">24 jam</option>
-            </select>
+              {{ opt.label }}
+            </button>
           </div>
         </div>
-      </header>
+      </div>
 
       <!-- panels: fills all remaining viewport height, no page-level scroll — each panel scrolls internally -->
       <div class="flex-1 min-h-0 p-4 sm:p-5 grid gap-3" :class="focused ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'">
@@ -174,18 +188,21 @@ async function fetchWeather() {
   }
 }
 
-const chipInactiveClass = computed(() =>
-  isDark.value ? 'bg-zinc-800 border-zinc-700 text-zinc-500' : 'bg-white border-gray-200 text-gray-400',
-)
-
-// ---- filters & data ----------------------------------------------------------
+// ---- level filter chips — one neutral chip style for every level; only the label
+// text is tinted, so the row doesn't read as "colorful" at a glance --------------
 const LEVEL_KEYS = ['ERROR', 'WARN', 'INFO', 'DEBUG']
-const LEVEL_CHIP = {
-  ERROR: 'bg-red-50 border-red-300 text-red-700',
-  WARN: 'bg-amber-50 border-amber-300 text-amber-700',
-  INFO: 'bg-sky-50 border-sky-300 text-sky-700',
-  DEBUG: 'bg-zinc-100 border-zinc-300 text-zinc-600',
+const LEVEL_TEXT = {
+  ERROR: 'text-red-500',
+  WARN: 'text-amber-500',
+  INFO: 'text-sky-500',
+  DEBUG: 'text-zinc-500',
 }
+const chipActiveClass = computed(() =>
+  isDark.value ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-200',
+)
+const chipInactiveClass = computed(() =>
+  isDark.value ? 'bg-zinc-800/40 border-zinc-800 text-zinc-600' : 'bg-gray-50 border-gray-100 text-gray-300',
+)
 const activeLevels = reactive(new Set(LEVEL_KEYS))
 function toggleLevel(key) {
   if (activeLevels.has(key)) {
@@ -195,7 +212,28 @@ function toggleLevel(key) {
   }
 }
 
+// ---- range dropdown (custom, animated chevron — same pattern as the dashboard's
+// Power Usage hour-range dropdown) ------------------------------------------------
+const rangeOptions = [
+  { value: '15m', label: '15 menit' },
+  { value: '1h', label: '1 jam' },
+  { value: '6h', label: '6 jam' },
+  { value: '24h', label: '24 jam' },
+]
 const range = ref('1h')
+const rangeDropdownOpen = ref(false)
+const rangeDropdownRef = ref(null)
+function selectRange(value) {
+  range.value = value
+  rangeDropdownOpen.value = false
+  fetchLogs()
+}
+function onDocClick(e) {
+  if (rangeDropdownRef.value && !rangeDropdownRef.value.contains(e.target)) {
+    rangeDropdownOpen.value = false
+  }
+}
+
 const focused = ref(null) // null | 'BACKEND' | 'FRONTEND' | 'IOT'
 const visibleSources = computed(() => (focused.value ? [focused.value] : ['BACKEND', 'FRONTEND', 'IOT']))
 
@@ -221,8 +259,10 @@ onMounted(() => {
   fetchWeather()
   fetchLogs()
   pollTimer = setInterval(fetchLogs, 3000)
+  document.addEventListener('click', onDocClick)
 })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
+  document.removeEventListener('click', onDocClick)
 })
 </script>
