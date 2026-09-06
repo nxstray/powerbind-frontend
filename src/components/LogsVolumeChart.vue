@@ -12,8 +12,16 @@
       <span class="text-[10.5px]" :class="isDark ? 'text-white/30' : 'text-gray-300'">Loki</span>
     </div>
 
-    <div v-if="expanded" class="relative px-2 pt-2 pb-1" @mouseleave="hoverIdx = null">
-      <svg :viewBox="`0 0 ${W} ${H}`" class="w-full block" :height="H" preserveAspectRatio="none">
+    <div v-if="expanded" class="relative px-2 pt-2 pb-1">
+      <svg
+        ref="svgEl"
+        :viewBox="`0 0 ${W} ${H}`"
+        class="w-full block cursor-crosshair"
+        :height="H"
+        preserveAspectRatio="none"
+        @mousemove="onMouseMove"
+        @mouseleave="hoverX = null; hoverY = null"
+      >
         <line
           v-for="(gy, i) in gridYs"
           :key="'g' + i"
@@ -25,12 +33,33 @@
           stroke-dasharray="2,3"
         />
 
-        <g v-for="(b, i) in buckets" :key="i" @mouseenter="hoverIdx = i">
-          <rect :x="barX(i)" y="0" :width="barW + 1.5" :height="PLOT_H" fill="transparent" />
+        <g v-for="(b, i) in buckets" :key="i">
           <template v-for="(seg, si) in stackedSegs(b)" :key="si">
             <rect v-if="seg.h > 0" :x="barX(i)" :y="seg.y" :width="barW" :height="Math.max(seg.h, 1.5)" :fill="LEVEL_COLOR[seg.level]" rx="1" />
           </template>
         </g>
+
+        <!-- Crosshair: vertical + horizontal lines follow the cursor continuously across the plot area -->
+        <line
+          v-if="hoverX !== null"
+          :x1="hoverX"
+          :x2="hoverX"
+          y1="0"
+          :y2="PLOT_H"
+          :stroke="isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'"
+          stroke-width="1"
+          stroke-dasharray="3,3"
+        />
+        <line
+          v-if="hoverY !== null"
+          x1="0"
+          :x2="W"
+          :y1="hoverY"
+          :y2="hoverY"
+          :stroke="isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'"
+          stroke-width="1"
+          stroke-dasharray="3,3"
+        />
       </svg>
 
       <div class="flex justify-between text-[9.5px] mt-1 px-0.5" :class="isDark ? 'text-white/25' : 'text-gray-300'">
@@ -38,17 +67,20 @@
       </div>
 
       <div
-        v-if="hoverIdx !== null && bucketHasData(buckets[hoverIdx])"
-        class="absolute z-10 pointer-events-none rounded-lg border px-2.5 py-1.5 text-[10.5px] shadow-lg min-w-30"
+        v-if="hoverX !== null"
+        class="absolute z-10 pointer-events-none rounded-lg border px-2.5 py-1.5 text-[10.5px] shadow-lg min-w-"
         :class="isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200' : 'bg-white border-gray-200 text-gray-700'"
         :style="tooltipStyle"
       >
-        <p class="font-medium mb-1 opacity-70 whitespace-nowrap">{{ fmtBucketTime(buckets[hoverIdx].start) }}</p>
-        <div v-for="lvl in LEVEL_KEYS" :key="lvl" v-show="buckets[hoverIdx][lvl] > 0" class="flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: LEVEL_COLOR[lvl] }" />
-          <span class="opacity-70">{{ lvl.toLowerCase() }}</span>
-          <span class="font-semibold ml-auto">{{ buckets[hoverIdx][lvl] }}</span>
-        </div>
+        <p class="font-medium mb-1 opacity-70 whitespace-nowrap">{{ hoverTimeLabel }}</p>
+        <template v-if="hoverBucket && bucketHasData(hoverBucket)">
+          <div v-for="lvl in LEVEL_KEYS" :key="lvl" v-show="hoverBucket[lvl] > 0" class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: LEVEL_COLOR[lvl] }" />
+            <span class="opacity-70">{{ lvl.toLowerCase() }}</span>
+            <span class="font-semibold ml-auto">{{ hoverBucket[lvl] }}</span>
+          </div>
+        </template>
+        <p v-else class="opacity-50">Tidak ada log</p>
       </div>
     </div>
 
@@ -79,7 +111,9 @@ const ChevronDownIcon = (p) =>
   )
 
 const expanded = ref(true)
-const hoverIdx = ref(null)
+const svgEl = ref(null)
+const hoverX = ref(null) // cursor position in SVG coordinate space (0..W), null when not hovering
+const hoverY = ref(null) // cursor position in SVG coordinate space (0..PLOT_H), null when not hovering
 
 const LEVEL_KEYS = ['ERROR', 'WARN', 'INFO', 'DEBUG']
 const LEVEL_COLOR = { ERROR: '#f87171', WARN: '#fbbf24', INFO: '#4ade80', DEBUG: '#a1a1aa' }
@@ -92,11 +126,15 @@ const W = 600
 const H = 130
 const PLOT_H = 96
 
-const buckets = computed(() => {
+// Shared time range info, used by both bucketing and the crosshair position → time conversion.
+const timeMeta = computed(() => {
   const span = RANGE_MS[props.range] || RANGE_MS['1h']
   const now = Date.now()
-  const start = now - span
-  const bucketSize = span / BUCKET_COUNT
+  return { span, now, start: now - span, bucketSize: span / BUCKET_COUNT }
+})
+
+const buckets = computed(() => {
+  const { start, bucketSize, now } = timeMeta.value
   const arr = Array.from({ length: BUCKET_COUNT }, (_, i) => ({
     start: start + i * bucketSize,
     ERROR: 0, WARN: 0, INFO: 0, DEBUG: 0,
@@ -156,8 +194,12 @@ function fmtTick(ms) {
   const pad = (n) => String(n).padStart(2, '0')
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
-function fmtBucketTime(ms) {
-  return new Date(ms).toLocaleString('id-ID', { hour12: false })
+
+// Grafana-style precise timestamp: "YYYY-MM-DD HH:mm:ss.SSS"
+function fmtPrecise(ms) {
+  const d = new Date(ms)
+  const pad = (n, len = 2) => String(n).padStart(len, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`
 }
 
 const activeLegend = computed(() => {
@@ -165,9 +207,40 @@ const activeLegend = computed(() => {
   return present.length ? present : LEVEL_KEYS
 })
 
+// Converts a raw mouse event into an SVG-space X coordinate (0..W), accounting for
+// the viewBox scaling that happens because the SVG is rendered responsively (w-full).
+function onMouseMove(e) {
+  const el = svgEl.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const xRatio = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1)
+  hoverX.value = xRatio * W
+
+  // rect.height maps to the full H viewBox (including the x-axis strip below the
+  // plot), so scale by H then clamp to PLOT_H so the horizontal line never drifts
+  // past the bars into the axis label area.
+  const yRatio = Math.min(Math.max((e.clientY - rect.top) / rect.height, 0), 1)
+  hoverY.value = Math.min(yRatio * H, PLOT_H)
+}
+
+// The exact time under the cursor — continuous, not snapped to a bucket boundary.
+const hoverTimeMs = computed(() => {
+  if (hoverX.value === null) return null
+  const { start, span } = timeMeta.value
+  return start + (hoverX.value / W) * span
+})
+const hoverTimeLabel = computed(() => (hoverTimeMs.value === null ? '' : fmtPrecise(hoverTimeMs.value)))
+
+// Which bucket's counts to show in the tooltip — the one the cursor currently sits over.
+const hoverBucket = computed(() => {
+  if (hoverX.value === null) return null
+  const idx = Math.min(Math.max(Math.floor(hoverX.value / (W / BUCKET_COUNT)), 0), BUCKET_COUNT - 1)
+  return buckets.value[idx]
+})
+
 const tooltipStyle = computed(() => {
-  if (hoverIdx.value === null) return {}
-  const xPct = (barX(hoverIdx.value) / W) * 100
-  return { left: `min(${xPct}%, 78%)`, top: '4px' }
+  if (hoverX.value === null) return {}
+  const xPct = (hoverX.value / W) * 100
+  return { left: `min(${xPct}%, 68%)`, top: '4px' }
 })
 </script>
