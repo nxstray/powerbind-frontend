@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col rounded-xl border overflow-hidden" :class="isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'">
-    <div class="flex items-center justify-between px-3 py-2 border-b" :class="headClass">
+  <div class="flex flex-col h-full rounded-xl border overflow-hidden" :class="isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'">
+    <div class="flex items-center justify-between px-3 py-2 border-b shrink-0" :class="headClass">
       <div class="flex items-center gap-1.5 text-xs font-semibold">
         <span>{{ META[sourceKey].label }}</span>
       </div>
@@ -14,7 +14,8 @@
       </div>
     </div>
 
-    <div ref="scrollEl" @scroll="onScroll" class="bg-zinc-900 overflow-y-auto font-mono text-[11.5px] leading-5" :class="heightClass">
+    <!-- Fills all remaining panel height (was a fixed px height before, which cut logs off before the panel's true bottom edge) -->
+    <div ref="scrollEl" @scroll="onScroll" class="custom-scroll bg-zinc-900 overflow-y-auto flex-1 min-h-0 font-mono text-[11.5px] leading-5">
       <div v-if="logs.length === 0" class="h-full flex flex-col items-center justify-center text-zinc-500 gap-1 py-10">
         <p class="text-xs">Tidak ada log</p>
       </div>
@@ -35,6 +36,9 @@
           {{ fmtFull(l.timestampMs) }}
         </div>
       </div>
+
+      <!-- Bottom breathing room so the last row never sits flush against the scroll edge -->
+      <div class="h-2" />
     </div>
   </div>
 </template>
@@ -48,7 +52,6 @@ const props = defineProps({
   isDark: { type: Boolean, default: false },
   isLive: { type: Boolean, default: true },
   focused: { type: Boolean, default: false },
-  heightClass: { type: String, default: 'h-[360px]' },
 })
 defineEmits(['focus', 'unfocus'])
 
