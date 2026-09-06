@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-[#f5f5f0] overflow-hidden">
-    <div class="ring">
+    <div class="loginRing">
       <i style="--clr:#0f172a;"></i>
       <i style="--clr:#0f8cd5;"></i>
       <i style="--clr:#f97316;"></i>
@@ -44,7 +44,7 @@
           <div class="inputBx">
             <input
               type="submit"
-              :value="loading ? 'Signing in...' : 'Sign in'"
+              :value="loading ? 'Sedang masuk' : 'Masuk'"
               :disabled="loading"
             />
           </div>
@@ -78,9 +78,9 @@ async function handleLogin() {
   } catch (e) {
     const msg = e.response?.data?.error
     if (e.response?.status === 429) {
-      errorMsg.value = msg || 'Too many attempts. Please try again later.'
+      errorMsg.value = msg || 'Terlalu banyak percobaan. Coba lagi nanti.'
     } else {
-      errorMsg.value = msg || 'Invalid username or password.'
+      errorMsg.value = msg || 'Username atau password salah.'
     }
   } finally {
     loading.value = false
@@ -89,7 +89,7 @@ async function handleLogin() {
 </script>
 
 <style scoped>
-.ring {
+.loginRing {
   position: relative;
   width: 420px;
   height: 420px;
@@ -97,25 +97,25 @@ async function handleLogin() {
   justify-content: center;
   align-items: center;
 }
-.ring i {
+.loginRing i {
   position: absolute;
   inset: 0;
   border: 2px solid #d1d5db;
   transition: border 0.5s, filter 0.5s;
 }
-.ring i:nth-child(1) {
+.loginRing i:nth-child(1) {
   border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
   animation: spin 6s linear infinite;
 }
-.ring i:nth-child(2) {
+.loginRing i:nth-child(2) {
   border-radius: 41% 44% 56% 59% / 38% 62% 63% 37%;
   animation: spin 4s linear infinite;
 }
-.ring i:nth-child(3) {
+.loginRing i:nth-child(3) {
   border-radius: 41% 44% 56% 59% / 38% 62% 63% 37%;
   animation: spinReverse 10s linear infinite;
 }
-.ring:hover i {
+.loginRing:hover i {
   border: 4px solid var(--clr);
   filter: drop-shadow(0 0 16px var(--clr));
 }
@@ -136,12 +136,16 @@ async function handleLogin() {
   width: 100%;
   padding: 0.5rem 0.9rem;
   background: white;
-  border: 1.5px solid #e5e7eb;
+  border: 1px solid #e5e7eb;
   border-radius: 0.65rem;
   font-size: 0.85rem;
   color: #111827;
   outline: none;
-  transition: 0.2s;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.inputBx input:hover:not(:focus) {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 .inputBx input:focus {
   border-color: #0f8cd5;
@@ -171,7 +175,7 @@ async function handleLogin() {
   color: #0f8cd5;
 }
 
-/* Sign in button — smaller size + hover animation */
+/* Sign in button */
 .inputBx input[type='submit'] {
   cursor: pointer;
   border: none;
