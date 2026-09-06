@@ -1,6 +1,6 @@
 <template>
-  <div class="rounded-xl border" :class="isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'">
-    <div class="flex items-center justify-between px-3 py-2 border-b" :class="isDark ? 'border-zinc-800' : 'border-gray-100'">
+  <div>
+    <div class="flex items-center justify-between px-0.5 py-1.5">
       <button
         @click="expanded = !expanded"
         class="flex items-center gap-1.5 text-xs font-semibold"
@@ -12,7 +12,7 @@
       <span class="text-[10.5px]" :class="isDark ? 'text-white/30' : 'text-gray-300'">Loki</span>
     </div>
 
-    <div v-if="expanded" class="relative px-2 pt-2 pb-1">
+    <div v-if="expanded" class="relative px-0.5 pt-1 pb-1">
       <svg
         ref="svgEl"
         :viewBox="`0 0 ${W} ${H}`"
@@ -84,7 +84,7 @@
       </div>
     </div>
 
-    <div v-if="expanded" class="flex items-center gap-3 px-3 pb-2 text-[10.5px]" :class="isDark ? 'text-white/50' : 'text-gray-500'">
+    <div v-if="expanded" class="flex items-center gap-3 px-0.5 pb-1 text-[10.5px]" :class="isDark ? 'text-white/50' : 'text-gray-500'">
       <span v-for="lvl in activeLegend" :key="lvl" class="flex items-center gap-1.5">
         <span class="w-2.5 h-0.5 rounded-full" :style="{ background: LEVEL_COLOR[lvl] }" />
         {{ lvl.toLowerCase() }}
