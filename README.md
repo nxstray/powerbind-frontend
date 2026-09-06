@@ -14,6 +14,8 @@ The frontend is the user-facing side of Powerbind. It talks to the Spring Boot b
 | **Login** (`/login`) | JWT sign-in. Tokens are kept in `localStorage`; any API `401` clears the session and redirects back here |
 | **Dashboard** (`/`) | Live home overview: current power (W), energy (kWh), cost, per-room cards with presence and relay state, 24 h power history chart, energy donut. Weather-aware theming |
 | **Agent** (`/agent`) | Streaming AI energy advisor: text chat, image queries (vision), document Q&A (PDF/DOCX/TXT), voice input (Whisper), and per-user conversation history with markdown + Mermaid rendering |
+| **ERD** (`/erd`) | Admin-only entity-relationship viewer: tables, columns (PK/FK) and relations rendered from the backend's live JPA entities, with pan/zoom/drag layout and relation highlighting |
+| **Logs** (`/log`) | Admin-only system log viewer: merged Backend / Frontend / IoT streams from Loki, filterable by level, text, and time range, polling live every 3 s |
 
 ```mermaid
 flowchart LR
@@ -131,7 +133,19 @@ Open **http://localhost:5173**.
   - Conversations can be deleted from the history list. All history is strictly per-user.
 - The active conversation is remembered across page reloads.
 
-### 4. Log out
+### 4. ERD (admin only)
+
+- The **ERD** sidebar item appears only when the signed-in account has the `ADMIN` role.
+- Renders tables, columns (key/link icons mark PK/FK) and relations straight from the backend's `/api/admin/erd` — add or rename an entity field and the diagram reflects it on the next load, nothing to maintain by hand.
+- Drag tables, pan the canvas, `Ctrl` + scroll to zoom, click a table to highlight its relations; the toolbar has zoom, fit-to-screen, reset, grid toggle and a hand/pan mode.
+
+### 5. Logs (admin only)
+
+- Three panels — **Backend**, **Frontend**, **IoT** — fed by `/api/admin/logs` (a Loki proxy on the backend), polling every 3 s while **Live** is on.
+- Filter with the level chips (ERROR/WARN/INFO/DEBUG), the free-text search, and the time range (15m/1h/6h/24h); click a panel's maximize icon to focus it, click a row to expand its full timestamp.
+- Requires Loki to be reachable from the backend (`LOKI_URL`, default `http://localhost:3100` — started via `docker compose up -d`).
+
+### 6. Log out
 
 - Use the logout button in the sidebar. Tokens are revoked on the backend and cleared locally; you are returned to `/login`.
 
@@ -144,8 +158,10 @@ Open **http://localhost:5173**.
 | `/login` | login | guest only (redirects to dashboard if already signed in) |
 | `/` | dashboard | requires auth |
 | `/agent` | agent | requires auth |
+| `/erd` | erd | requires auth **+ ADMIN** |
+| `/log` | log | requires auth **+ ADMIN** |
 
-A global router guard redirects unauthenticated users to `/login`.
+A global router guard redirects unauthenticated users to `/login`. Admin-only routes additionally decode the `role` claim straight from the JWT (works even on a hard refresh) and bounce non-admins to the dashboard.
 
 ---
 
@@ -154,12 +170,14 @@ A global router guard redirects unauthenticated users to `/login`.
 ```
 src/
 ├── components/     # UI pieces: ChatInputBar, MarkdownRenderer, PowerChart, EnergyDonut,
-│                   #   RoomCard, StatCard, LiquidCard, icons/
-├── pages/          # LoginPage.vue, DashboardPage.vue, AgentPage.vue
-├── router/         # vue-router routes + auth navigation guard
-├── services/       # authService, dashboardService (REST), agentService (REST + SSE streaming)
-├── stores/         # Pinia stores: authStore (tokens/profile), dashboardStore (summary/history/live updates)
-├── utils/          # api.js — axios instance with JWT interceptor, 401 handling, error logging
+│                   #   RoomCard, StatCard, LiquidCard, LogPanel (admin log stream), icons/
+├── pages/          # LoginPage.vue, DashboardPage.vue, AgentPage.vue, ErdPage.vue (admin), LogPage.vue (admin)
+├── router/         # vue-router routes + auth/admin navigation guard
+├── services/       # authService, dashboardService (REST), agentService (REST + SSE streaming),
+│                   #   adminService (ERD schema + Loki log proxy)
+├── stores/         # Pinia stores: authStore (tokens/profile/role), dashboardStore (summary/history/live updates)
+├── utils/          # api.js — axios instance with JWT interceptor, 401 handling, error logging;
+│                   #   jwt.js — client-side JWT role decoder for the admin route guard
 ├── assets/         # global styles
 └── main.js         # app bootstrap
 ```
@@ -175,6 +193,8 @@ src/
 | Rooms/power not updating live | WebSocket blocked — confirm the backend exposes `/ws` and no proxy blocks SockJS |
 | AI answer never streams | Check `VITE_API_URL` and that the Groq key is configured on the backend |
 | Voice input does nothing | Grant microphone permission in the browser; recordings are sent to `/api/agent/transcribe` |
+| ERD/Log sidebar items are missing | Your account is not ADMIN — promote it on the backend (`UPDATE users SET role = 'ADMIN' WHERE username = '...';`), then log out and back in |
+| Log page shows "Gagal mengambil log..." | Loki is down or unreachable from the backend — start it with `docker compose up -d` and check `LOKI_URL` |
 
 ---
 
