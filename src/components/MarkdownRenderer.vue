@@ -26,7 +26,7 @@ mermaid.initialize({ startOnLoad: false, theme: 'neutral', suppressErrorRenderin
 let mermaidCounter = 0
 
 function processContent(text) {
-  if (!text) return ''
+  if (!text) return { html: '', mermaidBlocks: [] }
 
   // Extract mermaid code blocks and replace with placeholder divs
   const mermaidBlocks = []
@@ -37,7 +37,7 @@ function processContent(text) {
   })
 
   const rawHtml = marked.parse(withoutMermaid)
-  // Sanitize before di-v-html
+  // Sanitize before rendering via v-html
   const html = DOMPurify.sanitize(rawHtml)
   return { html, mermaidBlocks }
 }
