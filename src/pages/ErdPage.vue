@@ -373,16 +373,15 @@ function boxHeight(table) {
   return HEAD_H + table.columns.length * ROW_H
 }
 
-// Layered graph layout (Sugiyama-style, simplified): tables are placed into
-// columns based on how many FK "hops" they are from a referenced-only root
-// table, so a cable never has to travel far or loop around unrelated boxes.
-// Within each column, tables are ordered by the average vertical position of
-// the tables they reference in the previous column (barycenter heuristic),
-// which keeps most cables flowing left-to-right instead of criss-crossing.
+// Two-column layout: tables with no outgoing FK are "roots" and go in the
+// left column; every other table goes in a single right column. Keeping it
+// to exactly two columns (instead of one column per FK "hop") means a cable
+// never has to pass behind a box that isn't actually part of that
+// relationship — with 3+ columns, a middle column's tables can end up
+// sitting directly in the path between a left and a right table.
 function layoutTables(tables) {
   if (!tables.length) return
   const byName = new Map(tables.map((t) => [t.name, t]))
-
   const references = new Map(tables.map((t) => [t.name, new Set()]))
   schema.relations.forEach((r) => {
     if (references.has(r.from) && byName.has(r.to) && r.to !== r.from) {
@@ -390,43 +389,50 @@ function layoutTables(tables) {
     }
   })
 
-  const layerCache = new Map()
-  function layerOf(name, visiting = new Set()) {
-    if (layerCache.has(name)) return layerCache.get(name)
-    if (visiting.has(name)) return 0 // break circular FK chains instead of recursing forever
-    visiting.add(name)
-    const refs = [...references.get(name)]
-    const layer = refs.length ? 1 + Math.max(...refs.map((r) => layerOf(r, visiting))) : 0
-    layerCache.set(name, layer)
-    return layer
+  const roots = tables.filter((t) => references.get(t.name).size === 0)
+  const rootSet = new Set(roots.map((t) => t.name))
+  const rest = tables.filter((t) => !rootSet.has(t.name))
+
+  // Busiest roots (most tables pointing at them) go first, so the widest
+  // fan-out anchors the top of the column.
+  const incomingCount = new Map(roots.map((t) => [t.name, 0]))
+  schema.relations.forEach((r) => {
+    if (incomingCount.has(r.to)) incomingCount.set(r.to, incomingCount.get(r.to) + 1)
+  })
+  roots.sort((a, b) => incomingCount.get(b.name) - incomingCount.get(a.name))
+  const rootIndex = new Map(roots.map((t, i) => [t.name, i]))
+
+  // Order the right column by the average position of the root(s) each table
+  // references (barycenter heuristic) — this is what keeps most cables
+  // roughly straight instead of criss-crossing top to bottom.
+  const barycenterOf = (name) => {
+    const refs = [...references.get(name)].filter((r) => rootIndex.has(r))
+    return refs.length ? refs.reduce((sum, r) => sum + rootIndex.get(r), 0) / refs.length : roots.length
   }
-  tables.forEach((t) => layerOf(t.name))
+  rest.sort((a, b) => barycenterOf(a.name) - barycenterOf(b.name))
 
-  const layers = []
-  tables.forEach((t) => {
-    const l = layerCache.get(t.name)
-    if (!layers[l]) layers[l] = []
-    layers[l].push(t)
+  // Then nudge any table that also references another right-column table so
+  // it sits right after it (e.g. chat_messages ends up stacked next to
+  // conversations) — those pairs get routed as a short vertical cable
+  // instead of a long diagonal one.
+  const restIndex = new Map(rest.map((t, i) => [t.name, i]))
+  const chainKey = (name) => {
+    const sameColumnRef = [...references.get(name)].find((r) => restIndex.has(r))
+    return sameColumnRef ? restIndex.get(sameColumnRef) + 0.5 : restIndex.get(name)
+  }
+  rest.sort((a, b) => chainKey(a.name) - chainKey(b.name))
+
+  let y = 20
+  roots.forEach((t) => {
+    positions[t.name] = { x: 20, y }
+    y += boxHeight(t) + GAP_Y
   })
 
-  const orderIndex = new Map()
-  layers.forEach((layerTables) => {
-    const barycenter = (name) => {
-      const refs = [...references.get(name)].filter((r) => orderIndex.has(r))
-      if (!refs.length) return Number.MAX_SAFE_INTEGER
-      return refs.reduce((sum, r) => sum + orderIndex.get(r), 0) / refs.length
-    }
-    layerTables.sort((a, b) => barycenter(a.name) - barycenter(b.name))
-    layerTables.forEach((t, i) => orderIndex.set(t.name, i))
-  })
-
-  layers.forEach((layerTables, li) => {
-    const x = li * (BOX_W + GAP_X) + 20
-    let y = 20
-    layerTables.forEach((t) => {
-      positions[t.name] = { x, y }
-      y += boxHeight(t) + GAP_Y
-    })
+  y = 20
+  const restX = BOX_W + GAP_X + 20
+  rest.forEach((t) => {
+    positions[t.name] = { x: restX, y }
+    y += boxHeight(t) + GAP_Y
   })
 }
 
