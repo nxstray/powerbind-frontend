@@ -119,16 +119,27 @@
           }"
           class="relative"
         >
-          <svg :width="contentW" :height="contentH" class="absolute inset-0 pointer-events-none overflow-visible">
-            <path
-              v-for="p in paths"
-              :key="p.key"
-              :d="p.d"
-              fill="none"
-              :stroke="p.active ? lineFocusColor : lineColor"
-              :stroke-width="p.active ? 2 : 1.3"
-              :opacity="focusedTable && !p.active ? 0.25 : 1"
-            />
+          <svg :width="contentW" :height="contentH" class="absolute inset-0 overflow-visible" style="pointer-events: none">
+            <g v-for="p in paths" :key="p.key">
+              <!-- fat invisible hit-area so the thin line is easy to hover -->
+              <path :d="p.d" fill="none" stroke="transparent" stroke-width="14" style="pointer-events: stroke" class="cursor-pointer"
+                @mouseenter="hoveredRel = p.key" @mouseleave="hoveredRel = null" @click.stop="focusedTable = null" />
+              <path
+                :d="p.d"
+                fill="none"
+                :stroke="p.active ? lineFocusColor : lineColor"
+                :stroke-width="p.active ? 2.25 : 1.3"
+                :opacity="p.dimmed ? 0.15 : 1"
+                style="pointer-events: none"
+                class="transition-all duration-150"
+              />
+              <g v-if="p.active || !p.dimmed">
+                <text :x="p.fromLabel.x" :y="p.fromLabel.y" font-size="10" font-weight="700" text-anchor="middle"
+                  :fill="p.active ? lineFocusColor : lineColor" :opacity="p.dimmed ? 0.3 : 1">{{ p.fromLabel.text }}</text>
+                <text :x="p.toLabel.x" :y="p.toLabel.y" font-size="10" font-weight="700" text-anchor="middle"
+                  :fill="p.active ? lineFocusColor : lineColor" :opacity="p.dimmed ? 0.3 : 1">{{ p.toLabel.text }}</text>
+              </g>
+            </g>
           </svg>
 
           <div
@@ -138,11 +149,11 @@
             @mousedown="onTableMouseDown($event, table.name)"
             @click.stop="onTableClick(table.name)"
             :style="{ left: positions[table.name]?.x + 'px', top: positions[table.name]?.y + 'px', width: BOX_W + 'px' }"
-            class="absolute rounded-lg border shadow-sm overflow-hidden"
+            class="absolute rounded-lg border shadow-sm overflow-hidden transition-shadow duration-150"
             :class="[
               isDark ? 'bg-zinc-800' : 'bg-white',
-              focusedTable === table.name ? 'border-sky-400 ring-2 ring-sky-300/60' : (isDark ? 'border-zinc-700' : 'border-slate-200'),
-              focusedTable && !isNeighbor(table.name) ? 'opacity-30' : 'opacity-100',
+              isRelevantTable(table.name) ? 'border-sky-400 ring-2 ring-sky-300/60' : (isDark ? 'border-zinc-700' : 'border-slate-200'),
+              hasActiveHighlight && !isRelevantTable(table.name) ? 'opacity-30' : 'opacity-100',
               handTool ? '' : 'cursor-move',
             ]"
           >
@@ -153,9 +164,14 @@
               <div
                 v-for="col in table.columns"
                 :key="col.name"
-                class="flex items-center gap-1.5 px-2.5 text-[11px]"
+                class="flex items-center gap-1.5 px-2.5 text-[11px] rounded-sm transition-colors"
                 :style="{ height: ROW_H + 'px' }"
-                :class="isDark ? 'text-zinc-300' : 'text-slate-700'"
+                :class="[
+                  isDark ? 'text-zinc-300' : 'text-slate-700',
+                  isRelevantColumn(table.name, col.name) ? (isDark ? 'bg-white/10' : 'bg-sky-50') : '',
+                ]"
+                @mouseenter="(col.pk || col.fk) && (hoveredColumn = { table: table.name, column: col.name })"
+                @mouseleave="hoveredColumn = null"
               >
                 <AppTooltip v-if="col.pk" text="Primary key" position="right">
                   <KeyIcon :size="10" class="shrink-0 text-amber-500" />
@@ -422,6 +438,49 @@ function isNeighbor(name) {
   return highlighted.value ? highlighted.value.has(name) : true
 }
 
+// ---- relationship highlighting (dbdiagram-style) ---------------------------
+// Hover a PK/FK column, or the cable itself, to light up exactly the
+// relationship(s) it belongs to and dim everything else. Clicking a table
+// keeps the older "focus this table's neighbours" behaviour.
+const hoveredColumn = ref(null) // { table, column }
+const hoveredRel = ref(null) // relation key string
+
+function relKey(r) {
+  return `${r.from}.${r.fromColumn}->${r.to}.${r.toColumn}`
+}
+
+const activeRelKeys = computed(() => {
+  if (hoveredRel.value) return new Set([hoveredRel.value])
+  if (hoveredColumn.value) {
+    const keys = new Set()
+    schema.relations.forEach((r) => {
+      if (
+        (r.from === hoveredColumn.value.table && r.fromColumn === hoveredColumn.value.column) ||
+        (r.to === hoveredColumn.value.table && r.toColumn === hoveredColumn.value.column)
+      ) {
+        keys.add(relKey(r))
+      }
+    })
+    return keys
+  }
+  return null
+})
+
+const hasActiveHighlight = computed(() => !!focusedTable.value || !!hoveredColumn.value || !!hoveredRel.value)
+
+function isRelevantTable(name) {
+  if (activeRelKeys.value) {
+    if (hoveredColumn.value?.table === name) return true
+    return schema.relations.some((r) => activeRelKeys.value.has(relKey(r)) && (r.from === name || r.to === name))
+  }
+  if (focusedTable.value) return isNeighbor(name)
+  return false
+}
+
+function isRelevantColumn(tableName, colName) {
+  return !!hoveredColumn.value && hoveredColumn.value.table === tableName && hoveredColumn.value.column === colName
+}
+
 function onCanvasMouseDown(e) {
   if (dragState) return
   if (!handTool.value && e.target.closest('[data-table]')) return
@@ -509,17 +568,57 @@ const paths = computed(() => {
     const fp = positions[r.from]
     const tp = positions[r.to]
     if (!fromTable || !toTable || !fp || !tp) return null
-    const fIdx = fromTable.columns.findIndex((c) => c.name === r.fromColumn)
-    const tIdx = toTable.columns.findIndex((c) => c.name === r.toColumn)
-    const fromRightOf = fp.x + BOX_W / 2 < tp.x + BOX_W / 2
-    const fx = fromRightOf ? fp.x + BOX_W : fp.x
-    const fy = fp.y + HEAD_H + Math.max(0, fIdx) * ROW_H + ROW_H / 2
-    const tx = fromRightOf ? tp.x : tp.x + BOX_W
-    const ty = tp.y + HEAD_H + Math.max(0, tIdx) * ROW_H + ROW_H / 2
-    const dx = Math.max(50, Math.abs(tx - fx) / 2)
-    const d = `M ${fx} ${fy} C ${fx + (fromRightOf ? dx : -dx)} ${fy}, ${tx + (fromRightOf ? -dx : dx)} ${ty}, ${tx} ${ty}`
-    const active = !focusedTable.value || (highlighted.value && highlighted.value.has(r.from) && highlighted.value.has(r.to))
-    return { key: `${r.from}.${r.fromColumn}->${r.to}.${r.toColumn}`, d, active }
+
+    const key = relKey(r)
+    const fromCol = fromTable.columns.find((c) => c.name === r.fromColumn)
+    const toCol = toTable.columns.find((c) => c.name === r.toColumn)
+    const fromLabelText = fromCol?.pk ? '1' : '*'
+    const toLabelText = toCol?.pk ? '1' : '*'
+
+    const fromH = boxHeight(fromTable)
+    const toH = boxHeight(toTable)
+    // Tables placed in the same (or overlapping) column look messy when
+    // wired left-to-right, since the cable has to loop all the way around
+    // the boxes in between — route those vertically (bottom-to-top) instead.
+    const overlapX = fp.x < tp.x + BOX_W && tp.x < fp.x + BOX_W
+
+    let fx, fy, tx, ty, d, fromLabel, toLabel
+
+    if (overlapX) {
+      const fromAbove = fp.y < tp.y
+      fx = fp.x + BOX_W / 2
+      fy = fromAbove ? fp.y + fromH : fp.y
+      tx = tp.x + BOX_W / 2
+      ty = fromAbove ? tp.y : tp.y + toH
+      const dy = (ty - fy) * 0.5
+      d = `M ${fx} ${fy} C ${fx} ${fy + dy}, ${tx} ${ty - dy}, ${tx} ${ty}`
+      fromLabel = { x: fx + 11, y: fy + (fromAbove ? 13 : -7), text: fromLabelText }
+      toLabel = { x: tx + 11, y: ty + (fromAbove ? -7 : 13), text: toLabelText }
+    } else {
+      const fIdx = fromTable.columns.findIndex((c) => c.name === r.fromColumn)
+      const tIdx = toTable.columns.findIndex((c) => c.name === r.toColumn)
+      const fromRightOf = fp.x + BOX_W / 2 < tp.x + BOX_W / 2
+      fx = fromRightOf ? fp.x + BOX_W : fp.x
+      fy = fp.y + HEAD_H + Math.max(0, fIdx) * ROW_H + ROW_H / 2
+      tx = fromRightOf ? tp.x : tp.x + BOX_W
+      ty = tp.y + HEAD_H + Math.max(0, tIdx) * ROW_H + ROW_H / 2
+      const dx = Math.max(50, Math.abs(tx - fx) / 2)
+      d = `M ${fx} ${fy} C ${fx + (fromRightOf ? dx : -dx)} ${fy}, ${tx + (fromRightOf ? -dx : dx)} ${ty}, ${tx} ${ty}`
+      fromLabel = { x: fx + (fromRightOf ? 11 : -11), y: fy - 6, text: fromLabelText }
+      toLabel = { x: tx + (fromRightOf ? -11 : 11), y: ty - 6, text: toLabelText }
+    }
+
+    let active = false
+    let dimmed = false
+    if (activeRelKeys.value) {
+      active = activeRelKeys.value.has(key)
+      dimmed = !active
+    } else if (focusedTable.value) {
+      active = highlighted.value.has(r.from) && highlighted.value.has(r.to)
+      dimmed = !active
+    }
+
+    return { key, d, active, dimmed, fromLabel, toLabel }
   }).filter(Boolean)
 })
 
@@ -533,4 +632,4 @@ onUnmounted(() => {
   window.removeEventListener('mousemove', onMove)
   window.removeEventListener('mouseup', onUp)
 })
-</script>
+</script> 
