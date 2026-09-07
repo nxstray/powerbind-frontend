@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex transition-colors duration-1000 ease-in-out" :class="themeClass">
+  <div class="h-screen overflow-hidden flex transition-colors duration-1000 ease-in-out" :class="themeClass">
     <!-- Mobile overlay -->
     <div v-if="sidebarOpen" class="fixed inset-0 bg-black/40 z-20 md:hidden" @click="sidebarOpen = false" />
 
@@ -283,6 +283,7 @@
           class="absolute bottom-12 left-4 z-20 flex items-center gap-1 px-2 py-1.5 rounded-xl border shadow-lg backdrop-blur-md"
           :class="isDark ? 'bg-zinc-900/80 border-white/10' : 'bg-white/90 border-gray-200'"
         >
+          <template v-if="!toolsMinimized">
           <AppTooltip text="Perkecil" position="top">
             <button @click="zoomBy(1 / 1.15)" class="p-1.5 rounded-lg" :class="btnClass">
               <ZoomOutIcon :size="14" />
@@ -320,6 +321,14 @@
               <GridIcon :size="14" />
             </button>
           </AppTooltip>
+          </template>
+
+          <AppTooltip :text="toolsMinimized ? 'Tampilkan tools' : 'Minimize tools'" position="top">
+            <button @click="toolsMinimized = !toolsMinimized" class="p-1.5 rounded-lg" :class="btnClass">
+              <ChevronUpIcon v-if="toolsMinimized" :size="14" />
+              <ChevronDownIcon v-else :size="14" />
+            </button>
+          </AppTooltip>
         </div>
 
         <!-- Code sidebar — reconstructed entity code, slides in from the right
@@ -334,12 +343,13 @@
             v-if="codePanel.open"
             class="absolute inset-y-0 right-0 z-40 w-104 max-w-[85%] flex flex-col border-l shadow-2xl"
             :class="isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200'"
+            @wheel.stop
           >
             <div class="flex items-center gap-2 px-3 py-2 border-b shrink-0" :class="isDark ? 'border-white/10 bg-zinc-800/60' : 'border-gray-100 bg-slate-50'">
-              <p class="flex-1 min-w-0 text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-100' : 'text-slate-700'">
-                {{ codePanel.table }}
-                <span class="font-normal opacity-60">· {{ codePanel.className }}.java</span>
-              </p>
+              <div class="flex-1 min-w-0 flex items-baseline gap-1.5">
+                <span class="text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-100' : 'text-slate-700'">{{ codePanel.table }}</span>
+                <span class="text-[12px] font-normal opacity-60 truncate" :class="isDark ? 'text-zinc-400' : 'text-slate-500'">· {{ codePanel.className }}.java</span>
+              </div>
               <AppTooltip text="Tutup" position="bottom">
                 <button @mousedown.stop @click="codePanel.open = false" class="shrink-0 cursor-pointer transition" :class="btnClass">
                   <CloseIcon :size="14" />
@@ -366,28 +376,53 @@
       <div class="relative shrink-0 transition-[height] duration-300 ease-out" :class="dataPanel.open ? 'h-80' : 'h-0'">
         <button
           @click="toggleDataPanel"
-          class="absolute bottom-full left-4 z-20 flex h-8 items-center gap-1.5 rounded-t-lg px-4 text-xs font-semibold shadow-lg transition-colors cursor-pointer"
+          class="absolute bottom-full right-4 z-20 flex h-8 items-center gap-1.5 rounded-t-lg px-4 text-xs font-semibold shadow-lg transition-colors cursor-pointer"
           :class="dataPanel.open
             ? (isDark ? 'bg-zinc-800 text-zinc-100 border-x border-t border-white/10' : 'bg-white text-slate-700 border-x border-t border-gray-200')
             : (isDark ? 'bg-zinc-800 text-amber-400 hover:bg-zinc-700' : 'bg-amber-400 text-slate-800 hover:bg-amber-300')"
           title="Lihat isi data tabel"
         >
           <DatabaseIcon :size="13" />
-          Data
+          Data output
         </button>
 
         <div class="h-full overflow-hidden border-t" :class="isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200'">
           <div class="flex h-full flex-col">
             <div class="flex items-center gap-2 px-3 py-2 border-b shrink-0" :class="isDark ? 'border-white/10' : 'border-gray-100'">
-              <p class="text-[12px] font-semibold" :class="isDark ? 'text-zinc-100' : 'text-slate-700'">Isi Tabel</p>
-              <select
-                :value="dataPanel.table"
-                @change="onDataTableChange"
-                class="rounded-lg px-2 py-1 text-[11px] cursor-pointer"
-                :class="isDark ? 'bg-zinc-800 text-zinc-200 border border-white/10' : 'bg-white text-slate-700 border border-gray-200'"
-              >
-                <option v-for="t in schema.tables" :key="t.name" :value="t.name">{{ t.name }}</option>
-              </select>
+              <div class="relative" ref="dataTableDropdownRef">
+                <button
+                  @click="dataTableDropdownOpen = !dataTableDropdownOpen"
+                  class="flex items-center gap-1.5 text-[11px] rounded-md border px-2.5 py-1 transition"
+                  :class="isDark ? 'bg-zinc-800 text-zinc-200 border-white/10 hover:border-sky-400' : 'bg-white text-slate-700 border-gray-200 hover:border-sky-500'"
+                >
+                  {{ dataPanel.table || 'Pilih tabel' }}
+                  <ChevronLeftIcon :size="12" :class="dataTableDropdownOpen ? 'rotate-90' : '-rotate-90'" class="transition-transform" />
+                </button>
+                <Transition
+                  enter-active-class="transition duration-150 ease-out"
+                  enter-from-class="opacity-0 scale-95 -translate-y-1"
+                  leave-active-class="transition duration-100 ease-in"
+                  leave-to-class="opacity-0 scale-95 -translate-y-1"
+                >
+                  <div
+                    v-if="dataTableDropdownOpen"
+                    class="absolute left-0 top-full mt-1 w-56 rounded-md border shadow-lg z-50 overflow-hidden"
+                    :class="isDark ? 'bg-zinc-800 border-white/10' : 'bg-white border-gray-100'"
+                  >
+                    <button
+                      v-for="t in schema.tables"
+                      :key="t.name"
+                      @click="selectDataTable(t.name)"
+                      class="w-full text-left px-3 py-2 text-[11px] transition"
+                      :class="dataPanel.table === t.name
+                        ? (isDark ? 'bg-sky-500/10 text-sky-400' : 'bg-sky-50 text-sky-600')
+                        : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-slate-600 hover:bg-gray-50')"
+                    >
+                      {{ t.name }}
+                    </button>
+                  </div>
+                </Transition>
+              </div>
               <span class="flex-1" />
               <button @click="dataPagePrev" :disabled="dataPanel.page === 0 || dataPanel.loading" class="p-1 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed" :class="btnClass">
                 <ArrowLeftIcon :size="14" />
@@ -420,7 +455,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, i) in dataPanel.rows" :key="i" :class="i % 2 ? (isDark ? 'bg-white/3' : 'bg-slate-50') : ''">
-                    <td class="px-2 py-1 text-right select-none" :class="isDark ? 'text-zinc-600' : 'text-slate-400'">{{ dataPanel.page * dataPanel.size + i + 1 }}</td>
+                    <td class="px-2 py-1 text-left select-none" :class="isDark ? 'text-zinc-600' : 'text-slate-400'">{{ dataPanel.page * dataPanel.size + i + 1 }}</td>
                     <td
                       v-for="(cell, j) in row"
                       :key="j"
@@ -464,6 +499,8 @@ import LinkIcon from '@/components/icons/LinkIcon.vue'
 import CloseIcon from '@/components/icons/CloseIcon.vue'
 import ArrowLeftIcon from '@/components/icons/ArrowLeftIcon.vue'
 import ArrowRightIcon from '@/components/icons/ArrowRightIcon.vue'
+import ChevronDownIcon from '@/components/icons/ChevronDownIcon.vue'
+import ChevronUpIcon from '@/components/icons/ChevronUpIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -884,10 +921,24 @@ async function fetchDataRows() {
   }
 }
 
-function onDataTableChange(event) {
-  dataPanel.value.table = event.target.value
+function selectDataTable(name) {
+  dataPanel.value.table = name
   dataPanel.value.page = 0
+  dataTableDropdownOpen.value = false
   fetchDataRows()
+}
+
+// ---- toolbar minimize + data-table dropdown --------------------------------
+const toolsMinimized = ref(false)
+const dataTableDropdownOpen = ref(false)
+const dataTableDropdownRef = ref(null)
+
+function onDocumentClick(e) {
+  // close the table dropdown when clicking anywhere outside it (same pattern
+  // as the history dropdown on AgentPage / hours dropdown on DashboardPage)
+  if (dataTableDropdownRef.value && !dataTableDropdownRef.value.contains(e.target)) {
+    dataTableDropdownOpen.value = false
+  }
 }
 
 function dataPagePrev() {
@@ -1055,10 +1106,12 @@ onMounted(() => {
   loadSchema()
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
+  document.addEventListener('click', onDocumentClick)
 })
 onUnmounted(() => {
   window.removeEventListener('mousemove', onMove)
   window.removeEventListener('mouseup', onUp)
+  document.removeEventListener('click', onDocumentClick)
   if (explainController) explainController.abort()
 })
 </script>
