@@ -10,6 +10,22 @@
         @mousemove="onMouseMove"
         @mouseleave="hoverX = null; hoverY = null"
       >
+        <!-- Striped bar fill: a small repeating tile per level, subbing for a
+             repeating-linear-gradient background since SVG rects can't take one directly. -->
+        <defs>
+          <pattern
+            v-for="lvl in LEVEL_KEYS"
+            :key="lvl"
+            :id="stripeId(lvl)"
+            width="5"
+            height="5"
+            patternUnits="userSpaceOnUse"
+          >
+            <rect width="5" height="5" :fill="LEVEL_COLOR[lvl]" />
+            <rect width="5" height="2" :fill="isDark ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.4)'" />
+          </pattern>
+        </defs>
+
         <line
           v-for="(gy, i) in gridYs"
           :key="'g' + i"
@@ -23,7 +39,7 @@
 
         <g v-for="(b, i) in buckets" :key="i">
           <template v-for="(seg, si) in stackedSegs(b)" :key="si">
-            <rect v-if="seg.h > 0" :x="barX(i)" :y="seg.y" :width="barW" :height="Math.max(seg.h, 1.5)" :fill="LEVEL_COLOR[seg.level]" rx="1" />
+            <rect v-if="seg.h > 0" :x="barX(i)" :y="seg.y" :width="barW" :height="Math.max(seg.h, 1.5)" :fill="`url(#${stripeId(seg.level)})`" rx="1" />
           </template>
         </g>
 
@@ -153,6 +169,12 @@ function stackedSegs(b) {
 }
 function bucketHasData(b) {
   return LEVEL_KEYS.some((lvl) => b[lvl] > 0)
+}
+// Each level gets its own <pattern> id (scoped with a component-instance prefix so
+// multiple chart instances on the same page never collide over the same SVG id).
+const uid = Math.random().toString(36).slice(2, 8)
+function stripeId(lvl) {
+  return `logvol-stripe-${uid}-${lvl}`
 }
 
 const gridYs = computed(() => [0, PLOT_H / 2, PLOT_H])
