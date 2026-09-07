@@ -134,9 +134,9 @@
                 class="transition-all duration-150"
               />
               <g v-if="p.active || !p.dimmed">
-                <text :x="p.fromLabel.x" :y="p.fromLabel.y" font-size="10" font-weight="700" text-anchor="middle"
+                <text :x="p.fromLabel.x" :y="p.fromLabel.y" :font-size="p.fromLabel.text === '*' ? 15 : 11" font-weight="700" text-anchor="middle"
                   :fill="p.active ? lineFocusColor : lineColor" :opacity="p.dimmed ? 0.3 : 1">{{ p.fromLabel.text }}</text>
-                <text :x="p.toLabel.x" :y="p.toLabel.y" font-size="10" font-weight="700" text-anchor="middle"
+                <text :x="p.toLabel.x" :y="p.toLabel.y" :font-size="p.toLabel.text === '*' ? 15 : 11" font-weight="700" text-anchor="middle"
                   :fill="p.active ? lineFocusColor : lineColor" :opacity="p.dimmed ? 0.3 : 1">{{ p.toLabel.text }}</text>
               </g>
             </g>
@@ -369,6 +369,27 @@ const positions = reactive({})
 const loading = ref(true)
 const loadError = ref(false)
 
+// ---- persist manually-arranged positions across navigation ----------------
+// Whatever the user drags stays put next time they open this page, until
+// they drag it again — saved per table name so it survives schema reloads.
+const POSITIONS_STORAGE_KEY = 'powerbind-erd-positions'
+function loadSavedPositions() {
+  try {
+    const raw = localStorage.getItem(POSITIONS_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+function savePositions() {
+  try {
+    localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(positions))
+  } catch {
+    // localStorage unavailable (private mode, quota, etc.) — layout just
+    // won't persist, nothing else breaks.
+  }
+}
+
 function boxHeight(table) {
   return HEAD_H + table.columns.length * ROW_H
 }
@@ -433,6 +454,13 @@ function layoutTables(tables) {
   rest.forEach((t) => {
     positions[t.name] = { x: restX, y }
     y += boxHeight(t) + GAP_Y
+  })
+
+  // Apply anything the user has manually dragged before, on top of the
+  // computed default — new tables (not yet dragged) keep their auto layout.
+  const saved = loadSavedPositions()
+  tables.forEach((t) => {
+    if (saved[t.name]) positions[t.name] = { ...saved[t.name] }
   })
 }
 
@@ -562,8 +590,10 @@ function onMove(e) {
   }
 }
 function onUp() {
+  const wasDragging = !!dragState
   panState = null
   dragState = null
+  if (wasDragging) savePositions()
 }
 
 function onWheel(e) {
