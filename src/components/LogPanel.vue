@@ -1,12 +1,14 @@
 <template>
-  <div class="flex flex-col h-full rounded-xl border overflow-hidden" :class="isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'">
+  <div class="flex flex-col h-full rounded-md border overflow-hidden" :class="isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'">
     <div class="flex items-center justify-between px-3 py-2 border-b shrink-0" :class="headClass">
       <div class="flex items-center gap-1.5 text-xs font-semibold">
         <span>{{ META[sourceKey].label }}</span>
       </div>
       <div class="flex items-center gap-2 text-[11px]">
-        <span v-if="counts.ERROR > 0" class="text-red-600 font-semibold">{{ counts.ERROR }}E</span>
-        <span v-if="counts.WARN > 0" class="text-amber-600 font-semibold">{{ counts.WARN }}W</span>
+        <span v-if="counts.ERROR > 0" class="text-red-500 font-semibold">{{ counts.ERROR }}E</span>
+        <span v-if="counts.WARN > 0" class="text-amber-500 font-semibold">{{ counts.WARN }}W</span>
+        <span v-if="counts.INFO > 0" class="text-sky-500 font-semibold">{{ counts.INFO }}I</span>
+        <span v-if="counts.DEBUG > 0" class="text-zinc-400 font-semibold">{{ counts.DEBUG }}D</span>
         <span class="opacity-60">{{ logs.length }}</span>
         <button @click="focused ? $emit('unfocus') : $emit('focus')" class="opacity-60 hover:opacity-100">
           {{ focused ? '▁' : '⤢' }}
@@ -60,12 +62,12 @@ const META = {
   FRONTEND: { label: 'Frontend' },
   IOT: { label: 'IoT' },
 }
-const HEAD_CLASS = {
-  BACKEND: 'bg-sky-50 text-sky-700 border-sky-100',
-  FRONTEND: 'bg-violet-50 text-violet-700 border-violet-100',
-  IOT: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-}
-const headClass = computed(() => HEAD_CLASS[props.sourceKey])
+
+// Same neutral header style for every source — the source is already spelled out
+// in the label, so it doesn't need a color to identify it too.
+const headClass = computed(() =>
+  props.isDark ? 'bg-zinc-800/60 text-zinc-300 border-zinc-800' : 'bg-gray-50 text-gray-600 border-gray-100',
+)
 
 const LEVEL_BAR = {
   ERROR: 'border-l-red-500', WARN: 'border-l-amber-500', INFO: 'border-l-sky-500', DEBUG: 'border-l-zinc-400',
@@ -75,7 +77,7 @@ const LEVEL_TEXT = {
 }
 
 const counts = computed(() => {
-  const c = { ERROR: 0, WARN: 0 }
+  const c = { ERROR: 0, WARN: 0, INFO: 0, DEBUG: 0 }
   for (const l of props.logs) if (c[l.level] !== undefined) c[l.level]++
   return c
 })
