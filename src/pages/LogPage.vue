@@ -48,6 +48,15 @@
               <p class="text-xs font-semibold text-white truncate">{{ authStore.user?.displayName || 'Admin' }}</p>
               <p class="text-[10px] text-white/50 truncate">{{ authStore.user?.username || 'admin' }}</p>
             </div>
+            <AppTooltip text="Logout" position="right">
+              <button
+                @click="askLogout"
+                class="transition shrink-0"
+                :class="isDark ? 'text-white/40 hover:text-white' : 'text-gray-800/70 hover:text-gray-900'"
+              >
+                <LogOutIcon :size="15" />
+              </button>
+            </AppTooltip>
           </template>
         </div>
       </div>
@@ -66,7 +75,7 @@
 
       <!-- Boundary row, raised up to sit right above the panels: levels + range dropdown live here now -->
       <div
-        class="shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 py-2.5 border-b backdrop-blur-md"
+        class="relative z-20 shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 py-2.5 border-b backdrop-blur-md"
         :class="isDark ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-100'"
       >
         <button
@@ -126,11 +135,25 @@
         Gagal mengambil log dari /api/admin/logs. Pastikan Loki jalan dan kamu login sebagai admin.
       </p>
     </div>
+
+    <!-- Validation: logout -->
+    <ConfirmDialog
+      :open="logoutConfirm.open"
+      :loading="logoutConfirm.loading"
+      danger
+      title="Keluar dari Akun"
+      message="Kamu akan keluar dari sesi ini. Lanjutkan?"
+      confirm-text="Keluar"
+      cancel-text="Batal"
+      @confirm="confirmLogout"
+      @cancel="cancelLogout"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import adminService from '@/services/adminService'
 
@@ -140,9 +163,13 @@ import DatabaseIcon from '@/components/icons/DatabaseIcon.vue'
 import TerminalIcon from '@/components/icons/TerminalIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
+import LogOutIcon from '@/components/icons/LogOutIcon.vue'
+import AppTooltip from '@/components/AppTooltip.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import LogPanel from '@/components/LogPanel.vue'
 import LogsVolumeChart from '@/components/LogsVolumeChart.vue'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
@@ -158,6 +185,21 @@ const userInitial = computed(() => {
   const name = authStore.user?.displayName || authStore.user?.username || 'A'
   return name.charAt(0).toUpperCase()
 })
+
+// ---- logout (same confirm-dialog flow as DashboardPage/AgentPage) --------------
+const logoutConfirm = ref({ open: false, loading: false })
+function askLogout() {
+  logoutConfirm.value = { open: true, loading: false }
+}
+async function confirmLogout() {
+  logoutConfirm.value.loading = true
+  await authStore.logout()
+  router.push({ name: 'login' })
+}
+function cancelLogout() {
+  if (logoutConfirm.value.loading) return
+  logoutConfirm.value = { open: false, loading: false }
+}
 
 // ---- automatic weather/time theme — identical thresholds to DashboardPage --
 const themeClass = ref('bg-[#f0f2f5]')
@@ -191,11 +233,13 @@ async function fetchWeather() {
 // ---- level filter chips — one neutral chip style for every level; only the label
 // text is tinted, so the row doesn't read as "colorful" at a glance --------------
 const LEVEL_KEYS = ['ERROR', 'WARN', 'INFO', 'DEBUG']
+// Same classes LogPanel uses to color ERROR/WARN/INFO/DEBUG inside the log lines,
+// so a badge's color always matches what you see once you look at the logs.
 const LEVEL_TEXT = {
-  ERROR: 'text-red-500',
-  WARN: 'text-amber-500',
-  INFO: 'text-sky-500',
-  DEBUG: 'text-zinc-500',
+  ERROR: 'text-red-400',
+  WARN: 'text-amber-400',
+  INFO: 'text-sky-300',
+  DEBUG: 'text-zinc-400',
 }
 const chipActiveClass = computed(() =>
   isDark.value ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-200',
