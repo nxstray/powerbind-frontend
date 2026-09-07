@@ -17,7 +17,7 @@
           :x2="W"
           :y1="gy"
           :y2="gy"
-          :stroke="isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)'"
+          :stroke="isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.38)'"
           stroke-dasharray="2,3"
         />
 
@@ -50,7 +50,7 @@
         />
       </svg>
 
-      <div class="flex justify-between text-[9.5px] mt-1 px-0.5" :class="isDark ? 'text-white/25' : 'text-gray-300'">
+      <div class="flex justify-between text-[9.5px] mt-1 px-0.5" :class="isDark ? 'text-white/25' : 'text-gray-500'">
         <span v-for="(t, i) in xTicks" :key="i">{{ t }}</span>
       </div>
 
@@ -72,7 +72,7 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-3 px-0.5 pb-1 text-[10.5px]" :class="isDark ? 'text-white/50' : 'text-gray-500'">
+    <div class="flex items-center gap-3 px-0.5 pb-1 text-[10.5px]" :class="isDark ? 'text-white/50' : 'text-gray-600'">
       <span v-for="lvl in activeLegend" :key="lvl" class="flex items-center gap-1.5">
         <span class="w-2.5 h-0.5 rounded-full" :style="{ background: LEVEL_COLOR[lvl] }" />
         {{ lvl.toLowerCase() }}
