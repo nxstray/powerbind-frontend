@@ -93,7 +93,7 @@
       <div
         ref="viewportRef"
         class="relative flex-1 overflow-hidden select-none"
-        :class="[isDark ? 'bg-zinc-950' : 'bg-slate-50', handTool ? 'cursor-grab' : 'cursor-default']"
+        :class="[isDark ? 'bg-zinc-950' : 'bg-slate-50', 'cursor-default']"
         :style="{
           backgroundImage: showGrid ? `radial-gradient(${gridColor} 1px, transparent 1px)` : 'none',
           backgroundSize: `${24 * scale}px ${24 * scale}px`,
@@ -125,6 +125,7 @@
               <path :d="p.d" fill="none" stroke="transparent" stroke-width="14" style="pointer-events: stroke" class="cursor-pointer"
                 @mouseenter="hoveredRel = p.key" @mouseleave="hoveredRel = null" @click.stop="focusedTable = null" />
               <path
+                :id="p.id"
                 :d="p.d"
                 fill="none"
                 :stroke="p.active ? lineFocusColor : lineColor"
@@ -139,6 +140,16 @@
                 <text :x="p.toLabel.x" :y="p.toLabel.y" :font-size="p.toLabel.text === '*' ? 15 : 11" font-weight="700" text-anchor="middle"
                   :fill="p.active ? lineFocusColor : lineColor" :opacity="p.dimmed ? 0.3 : 1">{{ p.toLabel.text }}</text>
               </g>
+
+              <!-- Traveling packet — muncul hanya saat relasi ini aktif karena HOVER
+                   (kolom PK/FK atau kabelnya sendiri), meniru animasi highlight
+                   relationship di dbdiagram.io. Klik tabel (focus neighbours) tidak
+                   memicu animasi ini, hanya highlight statis. -->
+              <circle v-if="p.active && isHoverDriven" r="3.5" :fill="lineFocusColor">
+                <animateMotion dur="1.1s" repeatCount="indefinite" rotate="auto">
+                  <mpath :href="'#' + p.id" />
+                </animateMotion>
+              </circle>
             </g>
           </svg>
 
@@ -154,7 +165,7 @@
               isDark ? 'bg-zinc-800' : 'bg-white',
               isRelevantTable(table.name) ? 'border-sky-400 ring-2 ring-sky-300/60' : (isDark ? 'border-zinc-700' : 'border-slate-200'),
               hasActiveHighlight && !isRelevantTable(table.name) ? 'opacity-30' : 'opacity-100',
-              handTool ? '' : 'cursor-move',
+              'cursor-move',
             ]"
           >
             <div class="px-2.5 py-1.5 text-[12px] font-semibold" :class="isDark ? 'bg-zinc-700 text-zinc-100' : 'bg-sky-500 text-white'">
@@ -223,7 +234,7 @@
               <span class="font-normal opacity-70">· {{ explain.table }}</span>
             </p>
             <span
-              class="shrink-0 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-full"
+              class="shrink-0 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-md"
               :class="isDark ? 'bg-white/10 text-zinc-300' : 'bg-white/25'"
             >{{ explainKind(explain.col) }}</span>
             <AppTooltip text="Tutup" position="bottom">
@@ -247,7 +258,7 @@
                 Coba lagi
               </button>
             </p>
-            <p v-else>
+            <p v-else class="text-justify">
               <span v-if="explain.loading && !explainText" class="opacity-60">AI sedang menyusun penjelasan...</span>{{ explainText }}<span v-if="explain.loading" class="animate-pulse">▍</span>
             </p>
           </div>
@@ -285,20 +296,6 @@
           <AppTooltip text="Reset tampilan" position="top">
             <button @click="resetView" class="p-1.5 rounded-lg" :class="btnClass">
               <RotateCcwIcon :size="14" />
-            </button>
-          </AppTooltip>
-
-          <span class="w-px h-5 mx-1" :class="isDark ? 'bg-white/10' : 'bg-black/10'" />
-
-          <AppTooltip text="Alat pilih" position="top">
-            <button @click="handTool = false" class="p-1.5 rounded-lg" :class="!handTool ? btnOnClass : btnClass">
-              <MousePointerIcon :size="14" />
-            </button>
-          </AppTooltip>
-
-          <AppTooltip text="Alat geser (pan)" position="top">
-            <button @click="handTool = true" class="p-1.5 rounded-lg" :class="handTool ? btnOnClass : btnClass">
-              <HandIcon :size="14" />
             </button>
           </AppTooltip>
 
@@ -345,8 +342,6 @@ const ZoomInIcon = iconFactory([h('circle', { cx: 11, cy: 11, r: 8 }), h('line',
 const ZoomOutIcon = iconFactory([h('circle', { cx: 11, cy: 11, r: 8 }), h('line', { x1: 21, y1: 21, x2: 16.65, y2: 16.65 }), h('line', { x1: 8, y1: 11, x2: 14, y2: 11 })])
 const MaximizeIcon = iconFactory([h('path', { d: 'M8 3H5a2 2 0 0 0-2 2v3' }), h('path', { d: 'M21 8V5a2 2 0 0 0-2-2h-3' }), h('path', { d: 'M3 16v3a2 2 0 0 0 2 2h3' }), h('path', { d: 'M16 21h3a2 2 0 0 0 2-2v-3' })])
 const RotateCcwIcon = iconFactory([h('polyline', { points: '1 4 1 10 7 10' }), h('path', { d: 'M3.51 15a9 9 0 1 0 2.13-9.36L1 10' })])
-const MousePointerIcon = iconFactory([h('path', { d: 'M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z' })])
-const HandIcon = iconFactory([h('path', { d: 'M18 11V6a2 2 0 0 0-4 0v5' }), h('path', { d: 'M14 10V4a2 2 0 0 0-4 0v7' }), h('path', { d: 'M10 10.5V6a2 2 0 0 0-4 0v8' }), h('path', { d: 'M6 14v0a6 6 0 0 0 6 6h2a6 6 0 0 0 6-6v-3' })])
 const GridIcon = iconFactory([h('rect', { x: 3, y: 3, width: 7, height: 7 }), h('rect', { x: 14, y: 3, width: 7, height: 7 }), h('rect', { x: 14, y: 14, width: 7, height: 7 }), h('rect', { x: 3, y: 14, width: 7, height: 7 })])
 const KeyIcon = iconFactory([h('path', { d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.778-7.778zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4' })])
 const LinkIcon = iconFactory([h('path', { d: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' }), h('path', { d: 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' })])
@@ -560,7 +555,6 @@ const viewportRef = ref(null)
 const scale = ref(1.2)
 const pan = reactive({ x: 40, y: 20 })
 const showGrid = ref(true)
-const handTool = ref(false)
 const focusedTable = ref(null)
 
 let panState = null
@@ -589,6 +583,17 @@ const hoveredRel = ref(null) // relation key string
 function relKey(r) {
   return `${r.from}.${r.fromColumn}->${r.to}.${r.toColumn}`
 }
+
+// Unique-safe DOM id turunan dari relation key, dipakai <mpath href="#...">
+// untuk animasi paket data berjalan di sepanjang kabel.
+function pathId(key) {
+  return 'erd-path-' + key.replace(/[^a-zA-Z0-9]/g, '_')
+}
+
+// Animasi paket berjalan hanya diputar saat highlight berasal dari HOVER
+// (kolom PK/FK atau kabelnya sendiri) — klik tabel untuk fokus tetangga
+// tetap memakai highlight statis lama, tanpa animasi.
+const isHoverDriven = computed(() => !!hoveredRel.value || !!hoveredColumn.value)
 
 const activeRelKeys = computed(() => {
   if (hoveredRel.value) return new Set([hoveredRel.value])
@@ -624,24 +629,17 @@ function isRelevantColumn(tableName, colName) {
 
 function onCanvasMouseDown(e) {
   if (dragState) return
-  if (!handTool.value && e.target.closest('[data-table]')) return
+  if (e.target.closest('[data-table]')) return
   panState = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y }
-  if (!handTool.value && !e.target.closest('[data-table]')) {
-    focusedTable.value = null
-  }
+  focusedTable.value = null
 }
 
 function onTableMouseDown(e, name) {
-  // With the hand tool active, let the event bubble up to the canvas so the
-  // pan handler can start — stopPropagation here would block it (that was
-  // the "can't pan when the drag starts on top of a table" bug).
-  if (handTool.value) return
   e.stopPropagation()
   dragState = { id: name, startX: e.clientX, startY: e.clientY, origX: positions[name].x, origY: positions[name].y }
 }
 
 function onTableClick(name) {
-  if (handTool.value) return
   focusedTable.value = focusedTable.value === name ? null : name
 }
 
@@ -666,7 +664,6 @@ function relationsFor(table, column) {
 }
 
 function openExplain(table, col) {
-  if (handTool.value) return
   if (explainController) explainController.abort()
   explainController = new AbortController()
   explain.value = { open: true, loading: true, error: null, table, col }
@@ -817,7 +814,7 @@ const paths = computed(() => {
       dimmed = !active
     }
 
-    return { key, d, active, dimmed, fromLabel, toLabel }
+    return { key, id: pathId(key), d, active, dimmed, fromLabel, toLabel }
   }).filter(Boolean)
 })
 
