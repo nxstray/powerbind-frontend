@@ -73,23 +73,13 @@
         <LogsVolumeChart :logs="logs" :range="range" :is-dark="isDark" />
       </div>
 
-      <!-- Boundary row, raised up to sit right above the panels: levels + range dropdown live here now -->
+      <!-- Range dropdown row — stays right under the chart, not part of the boundary below -->
       <div
-        class="relative z-20 shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 py-2.5 border-b backdrop-blur-md"
-        :class="isDark ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-100'"
+        class="relative z-20 shrink-0 flex items-center justify-end px-4 md:px-6 pb-2"
+        :class="isDark ? 'bg-black/20' : 'bg-white/80'"
       >
-        <button
-          v-for="lvl in LEVEL_KEYS"
-          :key="lvl"
-          @click="toggleLevel(lvl)"
-          class="text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
-          :class="activeLevels.has(lvl) ? [chipActiveClass, LEVEL_TEXT[lvl]] : chipInactiveClass"
-        >
-          {{ lvl }}
-        </button>
-
         <!-- Range dropdown — same trigger/panel/chevron animation pattern as the Power Usage chart on the dashboard -->
-        <div class="relative ml-auto" ref="rangeDropdownRef">
+        <div class="relative" ref="rangeDropdownRef">
           <button
             @click="rangeDropdownOpen = !rangeDropdownOpen"
             class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
@@ -114,6 +104,22 @@
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- Boundary — badges only, sitting right on top of the log panels -->
+      <div
+        class="shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 py-2.5 border-b"
+        :class="isDark ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-100'"
+      >
+        <button
+          v-for="lvl in LEVEL_KEYS"
+          :key="lvl"
+          @click="toggleLevel(lvl)"
+          class="text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
+          :class="activeLevels.has(lvl) ? [chipActiveClass, LEVEL_TEXT[lvl]] : chipInactiveClass"
+        >
+          {{ lvl }}
+        </button>
       </div>
 
       <!-- panels: fills all remaining viewport height, no page-level scroll — each panel scrolls internally -->
