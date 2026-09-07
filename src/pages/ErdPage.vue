@@ -169,7 +169,12 @@
               'cursor-move',
             ]"
           >
-            <div class="px-2.5 py-1.5 text-[12px] font-semibold" :class="isDark ? 'bg-zinc-700 text-zinc-100' : 'bg-sky-500 text-white'">
+            <div
+              class="px-2.5 py-1.5 text-[12px] font-semibold cursor-pointer transition-colors"
+              :class="isDark ? 'bg-zinc-700 text-zinc-100 hover:bg-zinc-600' : 'bg-sky-500 text-white hover:bg-sky-400'"
+              title="Klik untuk lihat kode entity"
+              @click.stop="openCodePanel(table.name)"
+            >
               {{ table.name }}
             </div>
             <div>
@@ -217,19 +222,26 @@
           </div>
         </div>
 
-        <!-- Floating AI explain panel — top-right so it never collides with the
-             bottom-left toolbar. Streams the explanation of a PK/FK/unique
-             column word-by-word from /api/admin/erd/explain. -->
+        <!-- Floating AI explain panel — opens top-right (so it never collides
+             with the bottom-left toolbar) and can then be dragged anywhere in
+             the workstation by its header. Streams the explanation of a
+             PK/FK/unique column word-by-word from /api/admin/erd/explain. -->
         <div
           v-if="explain.open"
-          class="absolute top-4 right-4 z-30 w-96 max-w-[calc(100%-2rem)] rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
-          :class="isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/95 border-gray-200'"
+          ref="explainPanelRef"
+          class="absolute z-30 w-96 max-w-[calc(100%-2rem)] rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
+          :class="[
+            isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/95 border-gray-200',
+            explainPos ? '' : 'top-4 right-4',
+          ]"
+          :style="explainPos ? { left: explainPos.x + 'px', top: explainPos.y + 'px' } : null"
         >
           <div
-            class="flex items-center gap-2 px-3 py-2 border-b"
+            class="flex items-center gap-2 px-3 py-2 border-b cursor-move select-none"
             :class="isDark ? 'border-white/10 bg-zinc-800/60 text-zinc-100' : 'border-gray-100 bg-sky-500 text-white'"
+            @mousedown.stop="onExplainDragStart"
           >
-            <SparklesIcon :size="13" class="shrink-0" :class="isDark ? 'text-sky-400' : ''" />
+            <GemonoIcon :size="14" class="rounded-sm" />
             <p class="flex-1 min-w-0 text-[12px] font-semibold truncate">
               {{ explain.col?.name }}
               <span class="font-normal opacity-70">· {{ explain.table }}</span>
@@ -240,6 +252,7 @@
             >{{ explainKind(explain.col) }}</span>
             <AppTooltip text="Tutup" position="bottom">
               <button
+                @mousedown.stop
                 @click="closeExplain"
                 class="shrink-0 cursor-pointer transition"
                 :class="isDark ? 'text-zinc-400 hover:text-white' : 'text-white/70 hover:text-white'"
@@ -260,14 +273,14 @@
               </button>
             </p>
             <p v-else class="text-justify hyphens-auto wrap-break" lang="id">
-              <span v-if="explain.loading && !explainText" class="opacity-60">Gemono sedang menyusun penjelasan...</span>{{ explainText }}<span v-if="explain.loading" class="animate-pulse">▍</span>
+              <span v-if="explain.loading && !explainText" class="opacity-60">Gemono sedang menyusun penjelasan...</span><span v-html="formattedExplain"></span><span v-if="explain.loading" class="animate-pulse">▍</span>
             </p>
           </div>
         </div>
 
         <!-- Floating toolbar — zoom / view / tool controls, moved out of the old top navbar -->
         <div
-          class="absolute bottom-4 left-4 z-20 flex items-center gap-1 px-2 py-1.5 rounded-xl border shadow-lg backdrop-blur-md"
+          class="absolute bottom-12 left-4 z-20 flex items-center gap-1 px-2 py-1.5 rounded-xl border shadow-lg backdrop-blur-md"
           :class="isDark ? 'bg-zinc-900/80 border-white/10' : 'bg-white/90 border-gray-200'"
         >
           <AppTooltip text="Perkecil" position="top">
@@ -308,6 +321,119 @@
             </button>
           </AppTooltip>
         </div>
+
+        <!-- Code sidebar — reconstructed entity code, slides in from the right
+             when a table header is clicked -->
+        <Transition
+          enter-active-class="transition-transform duration-200 ease-out"
+          enter-from-class="translate-x-full"
+          leave-active-class="transition-transform duration-150 ease-in"
+          leave-to-class="translate-x-full"
+        >
+          <div
+            v-if="codePanel.open"
+            class="absolute inset-y-0 right-0 z-40 w-104 max-w-[85%] flex flex-col border-l shadow-2xl"
+            :class="isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200'"
+          >
+            <div class="flex items-center gap-2 px-3 py-2 border-b shrink-0" :class="isDark ? 'border-white/10 bg-zinc-800/60' : 'border-gray-100 bg-slate-50'">
+              <p class="flex-1 min-w-0 text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-100' : 'text-slate-700'">
+                {{ codePanel.table }}
+                <span class="font-normal opacity-60">· {{ codePanel.className }}.java</span>
+              </p>
+              <AppTooltip text="Tutup" position="bottom">
+                <button @mousedown.stop @click="codePanel.open = false" class="shrink-0 cursor-pointer transition" :class="btnClass">
+                  <CloseIcon :size="14" />
+                </button>
+              </AppTooltip>
+            </div>
+
+            <div class="flex-1 overflow-auto custom-scroll" :class="isDark ? 'bg-zinc-950' : 'bg-slate-950'">
+              <div v-if="codePanel.loading" class="p-3 text-[12px] text-zinc-400">Menyusun kode entity...</div>
+              <div v-else-if="codePanel.error" class="p-3 text-[12px] text-red-400">{{ codePanel.error }}</div>
+              <div v-else class="flex min-w-max">
+                <div class="sticky left-0 z-10 shrink-0 select-none px-3 py-3 text-right font-mono text-[11px] leading-5" :class="isDark ? 'bg-zinc-950 text-zinc-600' : 'bg-slate-950 text-slate-500'">
+                  <div v-for="n in codeLines.length" :key="n">{{ n }}</div>
+                </div>
+                <pre class="px-3 py-3 font-mono text-[11px] leading-5" :class="isDark ? 'text-zinc-300' : 'text-slate-200'"><code>{{ codePanel.code }}</code></pre>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </div>
+
+      <!-- Bottom data panel — the folder tab sticks to the bottom edge; opening
+           it slides the panel up and pushes the canvas content (not an overlay) -->
+      <div class="relative shrink-0 transition-[height] duration-300 ease-out" :class="dataPanel.open ? 'h-80' : 'h-0'">
+        <button
+          @click="toggleDataPanel"
+          class="absolute bottom-full left-4 z-20 flex h-8 items-center gap-1.5 rounded-t-lg px-4 text-xs font-semibold shadow-lg transition-colors cursor-pointer"
+          :class="dataPanel.open
+            ? (isDark ? 'bg-zinc-800 text-zinc-100 border-x border-t border-white/10' : 'bg-white text-slate-700 border-x border-t border-gray-200')
+            : (isDark ? 'bg-zinc-800 text-amber-400 hover:bg-zinc-700' : 'bg-amber-400 text-slate-800 hover:bg-amber-300')"
+          title="Lihat isi data tabel"
+        >
+          <DatabaseIcon :size="13" />
+          Data
+        </button>
+
+        <div class="h-full overflow-hidden border-t" :class="isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200'">
+          <div class="flex h-full flex-col">
+            <div class="flex items-center gap-2 px-3 py-2 border-b shrink-0" :class="isDark ? 'border-white/10' : 'border-gray-100'">
+              <p class="text-[12px] font-semibold" :class="isDark ? 'text-zinc-100' : 'text-slate-700'">Isi Tabel</p>
+              <select
+                :value="dataPanel.table"
+                @change="onDataTableChange"
+                class="rounded-lg px-2 py-1 text-[11px] cursor-pointer"
+                :class="isDark ? 'bg-zinc-800 text-zinc-200 border border-white/10' : 'bg-white text-slate-700 border border-gray-200'"
+              >
+                <option v-for="t in schema.tables" :key="t.name" :value="t.name">{{ t.name }}</option>
+              </select>
+              <span class="flex-1" />
+              <button @click="dataPagePrev" :disabled="dataPanel.page === 0 || dataPanel.loading" class="p-1 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed" :class="btnClass">
+                <ArrowLeftIcon :size="14" />
+              </button>
+              <span class="text-[11px] tabular-nums whitespace-nowrap" :class="isDark ? 'text-zinc-400' : 'text-slate-500'">
+                Hal. {{ dataPanel.page + 1 }} / {{ Math.max(1, Math.ceil(dataPanel.total / dataPanel.size)) }} · {{ dataPanel.total }} baris
+              </span>
+              <button @click="dataPageNext" :disabled="dataPanel.page >= Math.max(0, Math.ceil(dataPanel.total / dataPanel.size) - 1) || dataPanel.loading" class="p-1 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed" :class="btnClass">
+                <ArrowRightIcon :size="14" />
+              </button>
+              <button @click="dataPanel.open = false" class="p-1 rounded-lg" :class="btnClass">
+                <CloseIcon :size="14" />
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-auto custom-scroll">
+              <div v-if="dataPanel.loading" class="p-3 text-[12px]" :class="isDark ? 'text-zinc-400' : 'text-slate-400'">Memuat data...</div>
+              <div v-else-if="dataPanel.error" class="p-3 text-[12px] text-red-400">{{ dataPanel.error }}</div>
+              <table v-else class="w-max min-w-full text-[11px] font-mono border-collapse">
+                <thead class="sticky top-0 z-10" :class="isDark ? 'bg-zinc-800' : 'bg-slate-100'">
+                  <tr>
+                    <th class="px-2 py-1.5 text-left font-semibold border-b" :class="isDark ? 'border-white/10 text-zinc-500' : 'border-gray-200 text-slate-400'">#</th>
+                    <th
+                      v-for="c in dataPanel.columns"
+                      :key="c"
+                      class="px-2 py-1.5 text-left font-semibold border-b whitespace-nowrap"
+                      :class="isDark ? 'border-white/10 text-zinc-300' : 'border-gray-200 text-slate-600'"
+                    >{{ c }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, i) in dataPanel.rows" :key="i" :class="i % 2 ? (isDark ? 'bg-white/3' : 'bg-slate-50') : ''">
+                    <td class="px-2 py-1 text-right select-none" :class="isDark ? 'text-zinc-600' : 'text-slate-400'">{{ dataPanel.page * dataPanel.size + i + 1 }}</td>
+                    <td
+                      v-for="(cell, j) in row"
+                      :key="j"
+                      class="px-2 py-1 whitespace-nowrap max-w-64 truncate"
+                      :class="cell === null ? (isDark ? 'text-zinc-600 italic' : 'text-slate-400 italic') : (isDark ? 'text-zinc-300' : 'text-slate-700')"
+                      :title="cell ?? 'NULL'"
+                    >{{ cell === null ? 'NULL' : cell }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -322,7 +448,7 @@ import AppTooltip from '@/components/AppTooltip.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 import HomeIcon from '@/components/icons/HomeIcon.vue'
-import SparklesIcon from '@/components/icons/SparklesIcon.vue'
+import GemonoIcon from '@/components/icons/GemonoIcon.vue'
 import DatabaseIcon from '@/components/icons/DatabaseIcon.vue'
 import TerminalIcon from '@/components/icons/TerminalIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
@@ -336,6 +462,8 @@ import GridIcon from '@/components/icons/GridIcon.vue'
 import KeyIcon from '@/components/icons/KeyIcon.vue'
 import LinkIcon from '@/components/icons/LinkIcon.vue'
 import CloseIcon from '@/components/icons/CloseIcon.vue'
+import ArrowLeftIcon from '@/components/icons/ArrowLeftIcon.vue'
+import ArrowRightIcon from '@/components/icons/ArrowRightIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -359,7 +487,7 @@ function cancelLogout() {
 
 const navItems = [
   { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
-  { name: 'Gemono', routeName: 'agent', to: '/agent', icon: SparklesIcon },
+  { name: 'Gemono', routeName: 'agent', to: '/agent', icon: GemonoIcon },
   { name: 'ERD', routeName: 'erd', to: '/erd', icon: DatabaseIcon },
   { name: 'Log', routeName: 'log', to: '/log', icon: TerminalIcon },
 ]
@@ -638,12 +766,35 @@ const explain = ref({ open: false, loading: false, error: null, table: '', col: 
 const explainText = ref('')
 let explainController = null // AbortController for the in-flight stream
 
+// ---- draggable panel position ------------------------------------------------
+// null = default top-right placement (pure CSS classes). After the user grabs
+// the header once, the panel switches to explicit left/top coordinates that
+// are kept clamped inside the workstation viewport while dragging.
+const explainPanelRef = ref(null)
+const explainPos = ref(null)
+let explainDrag = null
+
 function explainKind(col) {
   if (!col) return ''
   if (col.pk) return 'Primary key'
   if (col.fk) return 'Foreign key'
   return 'Unique key'
 }
+
+// Italicize the important tokens in the streamed explanation: backticked
+// phrases, relationship types (one-to-many, many-to-one, ...), and DB
+// identifiers — snake_case columns like id_users and dotted refs like
+// users.id. The raw text is HTML-escaped first because the result is
+// rendered via v-html.
+const EXPLAIN_EMPHASIS_RE = /(`[^`]+`)|\b(one[ -]to[ -]many|many[ -]to[ -]one|one[ -]to[ -]one|many[ -]to[ -]many)\b|\b[a-z][a-z0-9_]+\.[a-z][a-z0-9_]*\b|\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/gi
+
+const formattedExplain = computed(() =>
+  explainText.value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(EXPLAIN_EMPHASIS_RE, (m) => `<em>${m.replace(/`/g, '')}</em>`),
+)
 
 // Relations already matched on this page from the loaded schema — sent along
 // as known facts so the AI explains them instead of guessing.
@@ -658,6 +809,7 @@ function openExplain(table, col) {
   explainController = new AbortController()
   explain.value = { open: true, loading: true, error: null, table, col }
   explainText.value = ''
+  explainPos.value = null // every open starts from the default top-right spot
 
   adminService.streamErdExplain(
     {
@@ -685,8 +837,97 @@ function closeExplain() {
   explain.value.open = false
 }
 
+// ---- Code sidebar — reconstructed entity code, opens on table header click --
+const codePanel = ref({ open: false, loading: false, error: null, table: '', className: '', code: '' })
+const codeLines = computed(() => (codePanel.value.code ? codePanel.value.code.split('\n') : []))
+
+async function openCodePanel(tableName) {
+  codePanel.value = { open: true, loading: true, error: null, table: tableName, className: '', code: '' }
+  try {
+    const data = await adminService.getErdTableCode(tableName)
+    codePanel.value.className = data.className
+    codePanel.value.code = data.code
+    codePanel.value.loading = false
+  } catch (e) {
+    codePanel.value.loading = false
+    codePanel.value.error = 'Gagal memuat kode entity.'
+  }
+}
+
+// ---- Bottom data panel — pgAdmin-style preview; opening it slides the panel
+// up from the bottom edge and pushes the canvas content instead of overlaying it
+const dataPanel = ref({ open: false, loading: false, error: null, table: '', page: 0, size: 50, total: 0, columns: [], rows: [] })
+
+function toggleDataPanel() {
+  dataPanel.value.open = !dataPanel.value.open
+  if (dataPanel.value.open) {
+    if (!dataPanel.value.table) {
+      dataPanel.value.table = focusedTable.value || schema.tables[0]?.name || ''
+    }
+    fetchDataRows()
+  }
+}
+
+async function fetchDataRows() {
+  if (!dataPanel.value.table) return
+  dataPanel.value.loading = true
+  dataPanel.value.error = null
+  try {
+    const data = await adminService.getErdTableRows(dataPanel.value.table, dataPanel.value.page, dataPanel.value.size)
+    dataPanel.value.columns = data.columns
+    dataPanel.value.rows = data.rows
+    dataPanel.value.total = data.total
+    dataPanel.value.loading = false
+  } catch (e) {
+    dataPanel.value.loading = false
+    dataPanel.value.error = 'Gagal memuat data tabel.'
+  }
+}
+
+function onDataTableChange(event) {
+  dataPanel.value.table = event.target.value
+  dataPanel.value.page = 0
+  fetchDataRows()
+}
+
+function dataPagePrev() {
+  if (dataPanel.value.page > 0 && !dataPanel.value.loading) {
+    dataPanel.value.page--
+    fetchDataRows()
+  }
+}
+
+function dataPageNext() {
+  const maxPage = Math.max(0, Math.ceil(dataPanel.value.total / dataPanel.value.size) - 1)
+  if (dataPanel.value.page < maxPage && !dataPanel.value.loading) {
+    dataPanel.value.page++
+    fetchDataRows()
+  }
+}
+
+function onExplainDragStart(e) {
+  if (e.button !== 0) return
+  const vp = viewportRef.value
+  const el = explainPanelRef.value
+  if (!vp || !el) return
+  const rect = el.getBoundingClientRect()
+  const vpRect = vp.getBoundingClientRect()
+  // Anchor the drag at the panel's current on-screen spot — works both for
+  // the default top-right placement and for a previously dragged position.
+  explainPos.value = { x: rect.left - vpRect.left, y: rect.top - vpRect.top }
+  explainDrag = { startX: e.clientX, startY: e.clientY, origX: explainPos.value.x, origY: explainPos.value.y }
+}
+
 function onMove(e) {
-  if (panState) {
+  if (explainDrag) {
+    const vp = viewportRef.value
+    const el = explainPanelRef.value
+    if (vp && el) {
+      const x = Math.min(Math.max(explainDrag.origX + (e.clientX - explainDrag.startX), 8), vp.clientWidth - el.offsetWidth - 8)
+      const y = Math.min(Math.max(explainDrag.origY + (e.clientY - explainDrag.startY), 8), vp.clientHeight - el.offsetHeight - 8)
+      explainPos.value = { x, y }
+    }
+  } else if (panState) {
     pan.x = panState.panX + (e.clientX - panState.startX)
     pan.y = panState.panY + (e.clientY - panState.startY)
   } else if (dragState) {
@@ -697,6 +938,7 @@ function onMove(e) {
   }
 }
 function onUp() {
+  explainDrag = null
   const wasDragging = !!dragState
   panState = null
   dragState = null
