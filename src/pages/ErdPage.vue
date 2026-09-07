@@ -141,10 +141,11 @@
                   :fill="p.active ? lineFocusColor : lineColor" :opacity="p.dimmed ? 0.3 : 1">{{ p.toLabel.text }}</text>
               </g>
 
-              <!-- Traveling packet — muncul hanya saat relasi ini aktif karena HOVER
-                   (kolom PK/FK atau kabelnya sendiri), meniru animasi highlight
-                   relationship di dbdiagram.io. Klik tabel (focus neighbours) tidak
-                   memicu animasi ini, hanya highlight statis. -->
+              <!-- Traveling packet — appears only while this relation is active
+                   due to HOVER (a PK/FK column or the cable itself), mimicking
+                   the highlight animation in dbdiagram.io. Clicking a table
+                   (focus neighbours) does not trigger this animation, only the
+                   static highlight. -->
               <circle v-if="p.active && isHoverDriven" r="3.5" :fill="lineFocusColor">
                 <animateMotion dur="1.1s" repeatCount="indefinite" rotate="auto">
                   <mpath :href="'#' + p.id" />
@@ -184,7 +185,7 @@
                 @mouseenter="(col.pk || col.fk) && (hoveredColumn = { table: table.name, column: col.name })"
                 @mouseleave="hoveredColumn = null"
               >
-                <AppTooltip v-if="col.pk" text="Primary key — klik untuk penjelasan AI" position="right">
+                <AppTooltip v-if="col.pk" text="Primary key" position="right">
                   <button
                     @click.stop="openExplain(table.name, col)"
                     class="shrink-0 cursor-pointer transition-transform hover:scale-150"
@@ -192,7 +193,7 @@
                     <KeyIcon :size="10" class="text-amber-500" />
                   </button>
                 </AppTooltip>
-                <AppTooltip v-else-if="col.fk" text="Foreign key — klik untuk penjelasan AI" position="right">
+                <AppTooltip v-else-if="col.fk" text="Foreign key" position="right">
                   <button
                     @click.stop="openExplain(table.name, col)"
                     class="shrink-0 cursor-pointer transition-transform hover:scale-150"
@@ -200,7 +201,7 @@
                     <LinkIcon :size="10" class="text-sky-500" />
                   </button>
                 </AppTooltip>
-                <AppTooltip v-else-if="col.unique" text="Unique key — klik untuk penjelasan AI" position="right">
+                <AppTooltip v-else-if="col.unique" text="Unique key" position="right">
                   <button
                     @click.stop="openExplain(table.name, col)"
                     class="shrink-0 cursor-pointer transition-transform hover:scale-150"
@@ -243,7 +244,7 @@
                 class="shrink-0 cursor-pointer transition"
                 :class="isDark ? 'text-zinc-400 hover:text-white' : 'text-white/70 hover:text-white'"
               >
-                <XIcon :size="14" />
+                <CloseIcon :size="14" />
               </button>
             </AppTooltip>
           </div>
@@ -258,8 +259,8 @@
                 Coba lagi
               </button>
             </p>
-            <p v-else class="text-justify hyphens-auto break-words" lang="id">
-              <span v-if="explain.loading && !explainText" class="opacity-60">AI sedang menyusun penjelasan...</span>{{ explainText }}<span v-if="explain.loading" class="animate-pulse">▍</span>
+            <p v-else class="text-justify hyphens-auto wrap-break" lang="id">
+              <span v-if="explain.loading && !explainText" class="opacity-60">Gemono sedang menyusun penjelasan...</span>{{ explainText }}<span v-if="explain.loading" class="animate-pulse">▍</span>
             </p>
           </div>
         </div>
@@ -313,7 +314,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, h } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import adminService from '@/services/adminService'
@@ -327,25 +328,14 @@ import TerminalIcon from '@/components/icons/TerminalIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
 import LogOutIcon from '@/components/icons/LogOutIcon.vue'
-
-// Small inline-svg icons for the toolbar, following the same shape as
-// src/components/icons/*.vue. Worth promoting into their own .vue files if
-// you end up reusing any of these elsewhere — kept inline here so this diff
-// stays focused on the ERD page itself.
-const iconFactory = (paths) => (props) =>
-  h(
-    'svg',
-    { xmlns: 'http://www.w3.org/2000/svg', width: props.size || 24, height: props.size || 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' },
-    paths,
-  )
-const ZoomInIcon = iconFactory([h('circle', { cx: 11, cy: 11, r: 8 }), h('line', { x1: 21, y1: 21, x2: 16.65, y2: 16.65 }), h('line', { x1: 11, y1: 8, x2: 11, y2: 14 }), h('line', { x1: 8, y1: 11, x2: 14, y2: 11 })])
-const ZoomOutIcon = iconFactory([h('circle', { cx: 11, cy: 11, r: 8 }), h('line', { x1: 21, y1: 21, x2: 16.65, y2: 16.65 }), h('line', { x1: 8, y1: 11, x2: 14, y2: 11 })])
-const MaximizeIcon = iconFactory([h('path', { d: 'M8 3H5a2 2 0 0 0-2 2v3' }), h('path', { d: 'M21 8V5a2 2 0 0 0-2-2h-3' }), h('path', { d: 'M3 16v3a2 2 0 0 0 2 2h3' }), h('path', { d: 'M16 21h3a2 2 0 0 0 2-2v-3' })])
-const RotateCcwIcon = iconFactory([h('polyline', { points: '1 4 1 10 7 10' }), h('path', { d: 'M3.51 15a9 9 0 1 0 2.13-9.36L1 10' })])
-const GridIcon = iconFactory([h('rect', { x: 3, y: 3, width: 7, height: 7 }), h('rect', { x: 14, y: 3, width: 7, height: 7 }), h('rect', { x: 14, y: 14, width: 7, height: 7 }), h('rect', { x: 3, y: 14, width: 7, height: 7 })])
-const KeyIcon = iconFactory([h('path', { d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.778-7.778zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4' })])
-const LinkIcon = iconFactory([h('path', { d: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' }), h('path', { d: 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' })])
-const XIcon = iconFactory([h('path', { d: 'M18 6L6 18' }), h('path', { d: 'M6 6l12 12' })])
+import ZoomInIcon from '@/components/icons/ZoomInIcon.vue'
+import ZoomOutIcon from '@/components/icons/ZoomOutIcon.vue'
+import MaximizeIcon from '@/components/icons/MaximizeIcon.vue'
+import RotateCcwIcon from '@/components/icons/RotateCcwIcon.vue'
+import GridIcon from '@/components/icons/GridIcon.vue'
+import KeyIcon from '@/components/icons/KeyIcon.vue'
+import LinkIcon from '@/components/icons/LinkIcon.vue'
+import CloseIcon from '@/components/icons/CloseIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -584,15 +574,15 @@ function relKey(r) {
   return `${r.from}.${r.fromColumn}->${r.to}.${r.toColumn}`
 }
 
-// Unique-safe DOM id turunan dari relation key, dipakai <mpath href="#...">
-// untuk animasi paket data berjalan di sepanjang kabel.
+// Unique-safe DOM id derived from the relation key, used by <mpath href="#...">
+// for the traveling data packet animation along the cable.
 function pathId(key) {
   return 'erd-path-' + key.replace(/[^a-zA-Z0-9]/g, '_')
 }
 
-// Animasi paket berjalan hanya diputar saat highlight berasal dari HOVER
-// (kolom PK/FK atau kabelnya sendiri) — klik tabel untuk fokus tetangga
-// tetap memakai highlight statis lama, tanpa animasi.
+// The traveling packet animation only plays when the highlight comes from
+// HOVER (a PK/FK column or the cable itself) — clicking a table to focus
+// its neighbours keeps the old static highlight, without the animation.
 const isHoverDriven = computed(() => !!hoveredRel.value || !!hoveredColumn.value)
 
 const activeRelKeys = computed(() => {
