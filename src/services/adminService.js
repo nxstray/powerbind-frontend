@@ -77,6 +77,20 @@ const adminService = {
     }
   },
 
+  // Reconstructed Java entity code for one ERD table (reflection-based)
+  async getErdTableCode(table) {
+    const res = await api.get(`/api/admin/erd/${encodeURIComponent(table)}/code`)
+    return res.data.data
+  },
+
+  // Read-only paginated preview of a table's rows (pgAdmin-style)
+  async getErdTableRows(table, page = 0, size = 50) {
+    const res = await api.get(`/api/admin/erd/${encodeURIComponent(table)}/rows`, {
+      params: { page, size },
+    })
+    return res.data.data
+  },
+
   async queryLogs({ source = 'ALL', level, search, since = '1h', limit = 300 } = {}) {
     const res = await api.get('/api/admin/logs', {
       params: { source, level, search, since, limit },
