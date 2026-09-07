@@ -221,7 +221,7 @@
              column word-by-word from /api/admin/erd/explain. -->
         <div
           v-if="explain.open"
-          class="absolute top-4 right-4 z-30 w-80 max-w-[calc(100%-2rem)] rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
+          class="absolute top-4 right-4 z-30 w-96 max-w-[calc(100%-2rem)] rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
           :class="isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/95 border-gray-200'"
         >
           <div
@@ -258,7 +258,7 @@
                 Coba lagi
               </button>
             </p>
-            <p v-else class="text-justify">
+            <p v-else class="text-justify hyphens-auto break-words" lang="id">
               <span v-if="explain.loading && !explainText" class="opacity-60">AI sedang menyusun penjelasan...</span>{{ explainText }}<span v-if="explain.loading" class="animate-pulse">▍</span>
             </p>
           </div>
