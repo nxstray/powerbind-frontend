@@ -173,20 +173,83 @@
                 @mouseenter="(col.pk || col.fk) && (hoveredColumn = { table: table.name, column: col.name })"
                 @mouseleave="hoveredColumn = null"
               >
-                <AppTooltip v-if="col.pk" text="Primary key" position="right">
-                  <KeyIcon :size="10" class="shrink-0 text-amber-500" />
+                <AppTooltip v-if="col.pk" text="Primary key — klik untuk penjelasan AI" position="right">
+                  <button
+                    @click.stop="openExplain(table.name, col)"
+                    class="shrink-0 cursor-pointer transition-transform hover:scale-150"
+                  >
+                    <KeyIcon :size="10" class="text-amber-500" />
+                  </button>
                 </AppTooltip>
-                <AppTooltip v-else-if="col.fk" text="Foreign key" position="right">
-                  <LinkIcon :size="10" class="shrink-0 text-sky-500" />
+                <AppTooltip v-else-if="col.fk" text="Foreign key — klik untuk penjelasan AI" position="right">
+                  <button
+                    @click.stop="openExplain(table.name, col)"
+                    class="shrink-0 cursor-pointer transition-transform hover:scale-150"
+                  >
+                    <LinkIcon :size="10" class="text-sky-500" />
+                  </button>
                 </AppTooltip>
-                <AppTooltip v-else-if="col.unique" text="Unique key" position="right">
-                  <KeyIcon :size="10" class="shrink-0 text-violet-500" />
+                <AppTooltip v-else-if="col.unique" text="Unique key — klik untuk penjelasan AI" position="right">
+                  <button
+                    @click.stop="openExplain(table.name, col)"
+                    class="shrink-0 cursor-pointer transition-transform hover:scale-150"
+                  >
+                    <KeyIcon :size="10" class="text-violet-500" />
+                  </button>
                 </AppTooltip>
                 <span v-else class="w-2.5 shrink-0" />
                 <span :class="col.pk ? 'font-semibold' : ''">{{ col.name }}</span>
                 <span class="ml-auto text-[10px]" :class="isDark ? 'text-zinc-500' : 'text-slate-400'">{{ col.type }}</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Floating AI explain panel — top-right so it never collides with the
+             bottom-left toolbar. Streams the explanation of a PK/FK/unique
+             column word-by-word from /api/admin/erd/explain. -->
+        <div
+          v-if="explain.open"
+          class="absolute top-4 right-4 z-30 w-80 max-w-[calc(100%-2rem)] rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
+          :class="isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/95 border-gray-200'"
+        >
+          <div
+            class="flex items-center gap-2 px-3 py-2 border-b"
+            :class="isDark ? 'border-white/10 bg-zinc-800/60 text-zinc-100' : 'border-gray-100 bg-sky-500 text-white'"
+          >
+            <SparklesIcon :size="13" class="shrink-0" :class="isDark ? 'text-sky-400' : ''" />
+            <p class="flex-1 min-w-0 text-[12px] font-semibold truncate">
+              {{ explain.col?.name }}
+              <span class="font-normal opacity-70">· {{ explain.table }}</span>
+            </p>
+            <span
+              class="shrink-0 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-full"
+              :class="isDark ? 'bg-white/10 text-zinc-300' : 'bg-white/25'"
+            >{{ explainKind(explain.col) }}</span>
+            <AppTooltip text="Tutup" position="bottom">
+              <button
+                @click="closeExplain"
+                class="shrink-0 cursor-pointer transition"
+                :class="isDark ? 'text-zinc-400 hover:text-white' : 'text-white/70 hover:text-white'"
+              >
+                <XIcon :size="14" />
+              </button>
+            </AppTooltip>
+          </div>
+
+          <div
+            class="px-3 py-2.5 text-[12px] leading-relaxed overflow-y-auto custom-scroll max-h-64"
+            :class="isDark ? 'text-zinc-300' : 'text-slate-700'"
+          >
+            <p v-if="explain.error">
+              <span class="text-red-400">{{ explain.error }}</span>
+              <button @click="openExplain(explain.table, explain.col)" class="underline cursor-pointer hover:opacity-80 ml-1">
+                Coba lagi
+              </button>
+            </p>
+            <p v-else>
+              <span v-if="explain.loading && !explainText" class="opacity-60">AI sedang menyusun penjelasan...</span>{{ explainText }}<span v-if="explain.loading" class="animate-pulse">▍</span>
+            </p>
           </div>
         </div>
 
@@ -287,6 +350,7 @@ const HandIcon = iconFactory([h('path', { d: 'M18 11V6a2 2 0 0 0-4 0v5' }), h('p
 const GridIcon = iconFactory([h('rect', { x: 3, y: 3, width: 7, height: 7 }), h('rect', { x: 14, y: 3, width: 7, height: 7 }), h('rect', { x: 14, y: 14, width: 7, height: 7 }), h('rect', { x: 3, y: 14, width: 7, height: 7 })])
 const KeyIcon = iconFactory([h('path', { d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.778-7.778zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4' })])
 const LinkIcon = iconFactory([h('path', { d: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' }), h('path', { d: 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' })])
+const XIcon = iconFactory([h('path', { d: 'M18 6L6 18' }), h('path', { d: 'M6 6l12 12' })])
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -568,14 +632,70 @@ function onCanvasMouseDown(e) {
 }
 
 function onTableMouseDown(e, name) {
-  e.stopPropagation()
+  // With the hand tool active, let the event bubble up to the canvas so the
+  // pan handler can start — stopPropagation here would block it (that was
+  // the "can't pan when the drag starts on top of a table" bug).
   if (handTool.value) return
+  e.stopPropagation()
   dragState = { id: name, startX: e.clientX, startY: e.clientY, origX: positions[name].x, origY: positions[name].y }
 }
 
 function onTableClick(name) {
   if (handTool.value) return
   focusedTable.value = focusedTable.value === name ? null : name
+}
+
+// ---- AI explain panel — click a PK/FK/unique icon to stream an explanation --
+const explain = ref({ open: false, loading: false, error: null, table: '', col: null })
+const explainText = ref('')
+let explainController = null // AbortController for the in-flight stream
+
+function explainKind(col) {
+  if (!col) return ''
+  if (col.pk) return 'Primary key'
+  if (col.fk) return 'Foreign key'
+  return 'Unique key'
+}
+
+// Relations already matched on this page from the loaded schema — sent along
+// as known facts so the AI explains them instead of guessing.
+function relationsFor(table, column) {
+  return schema.relations
+    .filter((r) => (r.from === table && r.fromColumn === column) || (r.to === table && r.toColumn === column))
+    .map((r) => `${r.from}.${r.fromColumn} -> ${r.to}.${r.toColumn}`)
+}
+
+function openExplain(table, col) {
+  if (handTool.value) return
+  if (explainController) explainController.abort()
+  explainController = new AbortController()
+  explain.value = { open: true, loading: true, error: null, table, col }
+  explainText.value = ''
+
+  adminService.streamErdExplain(
+    {
+      table,
+      column: col.name,
+      type: col.type,
+      primaryKey: !!col.pk,
+      foreignKey: !!col.fk,
+      relations: relationsFor(table, col.name),
+    },
+    (chunk) => { explainText.value += chunk },
+    () => { explain.value.loading = false },
+    (err) => {
+      if (err?.name === 'AbortError') return // superseded or closed — ignore
+      explain.value.loading = false
+      explain.value.error = 'Gagal menghubungi AI. Coba lagi.'
+    },
+    explainController.signal,
+  )
+}
+
+function closeExplain() {
+  if (explainController) explainController.abort()
+  explainController = null
+  explain.value.open = false
 }
 
 function onMove(e) {
@@ -710,5 +830,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('mousemove', onMove)
   window.removeEventListener('mouseup', onUp)
+  if (explainController) explainController.abort()
 })
 </script>
