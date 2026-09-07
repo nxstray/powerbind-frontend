@@ -1,18 +1,6 @@
 <template>
   <div>
-    <div class="flex items-center justify-between px-0.5 py-1.5">
-      <button
-        @click="expanded = !expanded"
-        class="flex items-center gap-1.5 text-xs font-semibold"
-        :class="isDark ? 'text-white/80' : 'text-gray-700'"
-      >
-        <ChevronDownIcon :size="12" :class="expanded ? '' : '-rotate-90'" class="transition-transform" />
-        Logs volume
-      </button>
-      <span class="text-[10.5px]" :class="isDark ? 'text-white/30' : 'text-gray-300'">Loki</span>
-    </div>
-
-    <div v-if="expanded" class="relative px-0.5 pt-1 pb-1">
+    <div class="relative px-0.5 pt-1 pb-1">
       <svg
         ref="svgEl"
         :viewBox="`0 0 ${W} ${H}`"
@@ -29,7 +17,7 @@
           :x2="W"
           :y1="gy"
           :y2="gy"
-          :stroke="isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'"
+          :stroke="isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)'"
           stroke-dasharray="2,3"
         />
 
@@ -84,7 +72,7 @@
       </div>
     </div>
 
-    <div v-if="expanded" class="flex items-center gap-3 px-0.5 pb-1 text-[10.5px]" :class="isDark ? 'text-white/50' : 'text-gray-500'">
+    <div class="flex items-center gap-3 px-0.5 pb-1 text-[10.5px]" :class="isDark ? 'text-white/50' : 'text-gray-500'">
       <span v-for="lvl in activeLegend" :key="lvl" class="flex items-center gap-1.5">
         <span class="w-2.5 h-0.5 rounded-full" :style="{ background: LEVEL_COLOR[lvl] }" />
         {{ lvl.toLowerCase() }}
@@ -94,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, computed, h } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
   logs: { type: Array, default: () => [] }, // [{ timestampMs, level, source, message }]
@@ -102,15 +90,6 @@ const props = defineProps({
   isDark: { type: Boolean, default: false },
 })
 
-// Inline chevron icon (matches the icon-factory pattern already used in LogPage.vue)
-const ChevronDownIcon = (p) =>
-  h(
-    'svg',
-    { xmlns: 'http://www.w3.org/2000/svg', width: p.size || 14, height: p.size || 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' },
-    [h('path', { d: 'm6 9 6 6 6-6' })],
-  )
-
-const expanded = ref(true)
 const svgEl = ref(null)
 const hoverX = ref(null) // cursor position in SVG coordinate space (0..W), null when not hovering
 const hoverY = ref(null) // cursor position in SVG coordinate space (0..PLOT_H), null when not hovering
