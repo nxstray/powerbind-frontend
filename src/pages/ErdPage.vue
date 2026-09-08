@@ -19,8 +19,8 @@
           :key="item.name"
           @click="$router.push(item.to); sidebarOpen = false"
           :class="[
-            'w-full flex items-center rounded-xl text-sm font-medium transition group',
-            sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5',
+            'w-full flex items-center rounded-xl text-sm font-medium transition group py-2.5',
+            sidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3',
             $route.name === item.routeName ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white',
           ]"
           :title="sidebarCollapsed ? item.name : ''"
@@ -92,8 +92,8 @@
       <!-- canvas viewport -->
       <div
         ref="viewportRef"
-        class="relative flex-1 overflow-hidden select-none"
-        :class="[isDark ? 'bg-zinc-950' : 'bg-slate-50', 'cursor-default']"
+        class="relative flex-1 overflow-hidden select-none cursor-default"
+        :class="isDark ? 'bg-zinc-950' : 'bg-slate-50'"
         :style="{
           backgroundImage: showGrid ? `radial-gradient(${gridColor} 1px, transparent 1px)` : 'none',
           backgroundSize: `${24 * scale}px ${24 * scale}px`,
@@ -141,11 +141,6 @@
                   :fill="p.active ? lineFocusColor : lineColor" :opacity="p.dimmed ? 0.3 : 1">{{ p.toLabel.text }}</text>
               </g>
 
-              <!-- Traveling packet — appears only while this relation is active
-                   due to HOVER (a PK/FK column or the cable itself), mimicking
-                   the highlight animation in dbdiagram.io. Clicking a table
-                   (focus neighbours) does not trigger this animation, only the
-                   static highlight. -->
               <template v-if="p.active && isHoverDriven">
                 <circle v-for="n in PIPELINE_NODE_COUNT" :key="n" r="3.5" :fill="lineFocusColor">
                   <animateMotion
@@ -168,22 +163,22 @@
             @mousedown="onTableMouseDown($event, table.name)"
             @click.stop="onTableClick(table.name)"
             :style="{ left: positions[table.name]?.x + 'px', top: positions[table.name]?.y + 'px', width: BOX_W + 'px' }"
-            class="absolute rounded-lg border shadow-sm overflow-hidden transition-shadow duration-150"
+            class="absolute rounded-lg border shadow-sm overflow-hidden transition-shadow duration-150 cursor-move"
             :class="[
               isDark ? 'bg-zinc-800' : 'bg-white',
               isRelevantTable(table.name) ? 'border-sky-400 ring-2 ring-sky-300/60' : (isDark ? 'border-zinc-700' : 'border-slate-200'),
               hasActiveHighlight && !isRelevantTable(table.name) ? 'opacity-30' : 'opacity-100',
-              'cursor-move',
             ]"
           >
-            <div
-              class="px-2.5 py-1.5 text-[12px] font-semibold cursor-pointer transition-colors"
-              :class="isDark ? 'bg-zinc-700 text-zinc-100 hover:bg-zinc-600' : 'bg-sky-500 text-white hover:bg-sky-400'"
-              title="Klik untuk lihat kode entity"
-              @click.stop="openCodePanel(table.name)"
-            >
-              {{ table.name }}
-            </div>
+            <AppTooltip text="Klik untuk lihat kode entity" position="bottom" class="w-full">
+              <div
+                class="w-full px-2.5 py-1.5 text-[12px] font-semibold cursor-pointer transition-colors"
+                :class="isDark ? 'bg-zinc-700 text-zinc-100 hover:bg-zinc-600' : 'bg-sky-500 text-white hover:bg-sky-400'"
+                @click.stop="openCodePanel(table.name)"
+              >
+                {{ table.name }}
+              </div>
+            </AppTooltip>
             <div>
               <div
                 v-for="col in table.columns"
@@ -229,10 +224,6 @@
           </div>
         </div>
 
-        <!-- Floating AI explain panel — opens top-right (so it never collides
-             with the bottom-left toolbar) and can then be dragged anywhere in
-             the workstation by its header. Streams the explanation of a
-             PK/FK/unique column word-by-word from /api/admin/erd/explain. -->
         <div
           v-if="explain.open"
           ref="explainPanelRef"
@@ -240,12 +231,16 @@
           :class="[
             isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/95 border-gray-200',
             explainPos ? '' : 'top-4 right-4',
-            explainAuto ? 'w-max max-w-[min(32rem,calc(100%-2rem))]' : 'max-w-[calc(100%-2rem)]',
+            explainAuto ? 'w-max' : '',
+            explainAuto
+              ? (explain.loading && !explainText ? 'max-w-[min(16rem,calc(100%-2rem))]' : 'max-w-[min(32rem,calc(100%-2rem))]')
+              : 'max-w-[calc(100%-2rem)]',
           ]"
           :style="{
             ...(explainAuto ? {} : { width: explainSize.width + 'px' }),
             ...(explainPos ? { left: explainPos.x + 'px', top: explainPos.y + 'px' } : {}),
           }"
+          @wheel.stop
         >
           <div
             class="flex items-center gap-2 px-3 py-2 border-b cursor-move select-none"
@@ -265,8 +260,8 @@
               <button
                 @mousedown.stop
                 @click="closeExplain"
-                class="shrink-0 cursor-pointer transition"
-                :class="isDark ? 'text-zinc-400 hover:text-white' : 'text-white/70 hover:text-white'"
+                class="shrink-0 cursor-pointer transition hover:text-white"
+                :class="isDark ? 'text-zinc-400' : 'text-white/70'"
               >
                 <CloseIcon :size="14" />
               </button>
@@ -307,33 +302,31 @@
             </p>
           </div>
 
-          <!-- Resize handle — drag from the bottom-right corner to adjust
-               both the panel's width and the text area's height at once. -->
-          <div
-            class="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize touch-none"
-            @mousedown.stop="onExplainResizeStart"
-            title="Tarik untuk mengubah ukuran"
-          >
-            <svg viewBox="0 0 16 16" class="h-full w-full opacity-40 hover:opacity-80 transition-opacity" :class="isDark ? 'text-zinc-400' : 'text-slate-400'">
-              <path d="M13 3 L3 13 M13 8 L8 13 M13 13 L13 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" />
-            </svg>
+          <div class="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize touch-none" @mousedown.stop="onExplainResizeStart">
+            <AppTooltip text="Tarik untuk mengubah ukuran" position="top" class="h-full w-full">
+              <svg viewBox="0 0 16 16" class="h-full w-full opacity-40 hover:opacity-80 transition-opacity" :class="isDark ? 'text-zinc-400' : 'text-slate-400'">
+                <path d="M13 3 L3 13 M13 8 L8 13 M13 13 L13 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" />
+              </svg>
+            </AppTooltip>
           </div>
         </div>
 
-        <!-- Floating toolbar — zoom / view / tool controls, moved out of the old top navbar -->
         <div
           class="absolute bottom-12 left-4 z-20 flex items-center px-2 py-1.5 rounded-xl border shadow-lg backdrop-blur-md transition-[padding] duration-300 ease-[cubic-bezier(.34,1.3,.64,1)]"
           :class="isDark ? 'bg-zinc-900/80 border-white/10' : 'bg-white/90 border-gray-200'"
         >
           <AppTooltip :text="toolsMinimized ? 'Tampilkan tools' : 'Minimize tools'" position="top">
-            <button @click="toolsMinimized = !toolsMinimized" class="p-1.5 rounded-lg shrink-0" :class="btnClass">
+            <button @click="toggleTools" class="p-1.5 rounded-lg shrink-0" :class="btnClass">
               <ChevronUpIcon :size="14" class="transition-transform duration-300 ease-[cubic-bezier(.34,1.3,.64,1)]" :class="toolsMinimized ? 'rotate-180' : ''" />
             </button>
           </AppTooltip>
 
           <div
-            class="flex items-center gap-1 overflow-hidden transition-[max-width,opacity,margin] duration-300 ease-[cubic-bezier(.34,1.3,.64,1)]"
-            :class="toolsMinimized ? 'max-w-0 opacity-0 ml-0' : 'max-w-[320px] opacity-100 ml-1'"
+            class="flex items-center gap-1 transition-[max-width,opacity,margin] duration-300 ease-[cubic-bezier(.34,1.3,.64,1)]"
+            :class="[
+              toolsMinimized ? 'max-w-0 opacity-0 ml-0' : 'max-w-[320px] opacity-100 ml-1',
+              toolsAnimating || toolsMinimized ? 'overflow-hidden' : '',
+            ]"
           >
             <span class="w-px h-5 mx-1 shrink-0" :class="isDark ? 'bg-white/10' : 'bg-black/10'" />
 
@@ -343,9 +336,11 @@
               </button>
             </AppTooltip>
 
-            <button @click="scale = 1" class="text-xs w-12 text-center tabular-nums shrink-0" :class="isDark ? 'text-zinc-300' : 'text-slate-600'">
-              {{ Math.round(scale * 100) }}%
-            </button>
+            <AppTooltip text="Kembali ke 100%" position="top">
+              <button @click="scale = 1" class="text-xs w-12 text-center tabular-nums shrink-0 cursor-pointer" :class="isDark ? 'text-zinc-300' : 'text-slate-600'">
+                {{ Math.round(scale * 100) }}%
+              </button>
+            </AppTooltip>
 
             <AppTooltip text="Perbesar" position="top">
               <button @click="zoomBy(1.15)" class="p-1.5 rounded-lg shrink-0" :class="btnClass">
@@ -377,8 +372,6 @@
           </div>
         </div>
 
-        <!-- Code sidebar — reconstructed entity code, slides in from the right
-             when a table header is clicked -->
         <Transition
           enter-active-class="transition-transform duration-200 ease-out"
           enter-from-class="translate-x-full"
@@ -435,39 +428,41 @@
         </Transition>
       </div>
 
-      <!-- Bottom data panel — the folder tab sticks to the bottom edge; opening
-           it slides the panel up and pushes the canvas content (not an overlay) -->
       <div
         class="relative shrink-0"
         :class="dataPanelResizing ? '' : 'transition-[height] duration-300 ease-out'"
         :style="{ height: dataPanel.open ? dataPanelHeight + 'px' : '0px' }"
       >
-        <button
-          @click="toggleDataPanel"
-          class="absolute bottom-full right-4 z-20 flex h-8 items-center gap-1.5 rounded-t-lg px-4 text-xs font-semibold shadow-lg transition-colors cursor-pointer"
-          :class="dataPanel.open
-            ? (isDark ? 'bg-zinc-800 text-zinc-100 border-x border-t border-white/10' : 'bg-white text-slate-700 border-x border-t border-gray-200')
-            : (isDark ? 'bg-zinc-800 text-amber-400 hover:bg-zinc-700' : 'bg-amber-400 text-slate-800 hover:bg-amber-300')"
-          title="Lihat isi data tabel"
-        >
-          <DatabaseIcon :size="13" />
-          Data output
-        </button>
+        <div class="absolute bottom-full right-4 z-20">
+          <AppTooltip text="Lihat isi data tabel" position="top">
+            <button
+              @click="toggleDataPanel"
+              class="flex h-8 items-center gap-1.5 rounded-t-lg px-4 text-xs font-semibold shadow-lg transition-colors cursor-pointer"
+              :class="[
+                dataPanel.open
+                  ? 'border-x border-t ' + (isDark ? 'bg-zinc-800 text-zinc-100 border-white/10' : 'bg-white text-slate-700 border-gray-200')
+                  : (isDark ? 'bg-zinc-800 text-amber-400 hover:bg-zinc-700' : 'bg-amber-400 text-slate-800 hover:bg-amber-300')
+              ]"
+            >
+              <DatabaseIcon :size="13" />
+              Data output
+            </button>
+          </AppTooltip>
+        </div>
 
-        <!-- Drag handle to resize the panel's height — hover the top edge and
-             drag up/down. Only shown while the panel is open. -->
         <div
           v-if="dataPanel.open"
           class="absolute -top-1 left-0 right-0 h-2 z-20 cursor-ns-resize group"
           @mousedown.stop="onDataPanelResizeStart"
-          title="Tarik untuk mengubah tinggi panel"
         >
-          <div
-            class="mx-auto mt-0.5 h-1 w-10 rounded-full transition-colors"
-            :class="[
-              dataPanelResizing ? 'bg-sky-400' : (isDark ? 'bg-zinc-600 group-hover:bg-sky-400' : 'bg-gray-300 group-hover:bg-sky-500'),
-            ]"
-          />
+          <AppTooltip text="Tarik untuk mengubah tinggi panel" position="top" class="h-full w-full justify-center">
+            <div
+              class="mt-0.5 h-1 w-10 rounded-full transition-colors"
+              :class="[
+                dataPanelResizing ? 'bg-sky-400' : (isDark ? 'bg-zinc-600 group-hover:bg-sky-400' : 'bg-gray-300 group-hover:bg-sky-500'),
+              ]"
+            />
+          </AppTooltip>
         </div>
 
         <div class="h-full overflow-hidden border-t" :class="isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200'">
@@ -544,7 +539,12 @@
                       v-for="(cell, j) in row"
                       :key="j"
                       class="px-2 py-1 whitespace-nowrap max-w-64 truncate"
-                      :class="cell === null ? (isDark ? 'text-zinc-600 italic' : 'text-slate-400 italic') : (isDark ? 'text-zinc-300' : 'text-slate-700')"
+                      :class="[
+                        cell === null ? 'italic' : '',
+                        cell === null 
+                          ? (isDark ? 'text-zinc-600' : 'text-slate-400') 
+                          : (isDark ? 'text-zinc-300' : 'text-slate-700')
+                      ]"
                       :title="cell ?? 'NULL'"
                     >{{ cell === null ? 'NULL' : cell }}</td>
                   </tr>
@@ -1107,6 +1107,16 @@ function selectDataTable(name) {
 
 // ---- toolbar minimize + data-table dropdown --------------------------------
 const toolsMinimized = ref(false)
+// overflow-hidden pada baris tools hanya diterapkan selama animasi buka/tutup
+// (toolsAnimating) — kalau permanen, tooltip hover tombol-tombolnya ikut terpotong.
+const toolsAnimating = ref(false)
+let toolsAnimTimer = null
+function toggleTools() {
+  toolsMinimized.value = !toolsMinimized.value
+  toolsAnimating.value = true
+  clearTimeout(toolsAnimTimer)
+  toolsAnimTimer = setTimeout(() => { toolsAnimating.value = false }, 340)
+}
 const dataTableDropdownOpen = ref(false)
 const dataTableDropdownRef = ref(null)
 
