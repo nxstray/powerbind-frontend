@@ -236,13 +236,14 @@
         <div
           v-if="explain.open"
           ref="explainPanelRef"
-          class="absolute z-30 max-w-[calc(100%-2rem)] rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
+          class="absolute z-30 rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
           :class="[
             isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/95 border-gray-200',
             explainPos ? '' : 'top-4 right-4',
+            explainAuto ? 'w-max max-w-[min(32rem,calc(100%-2rem))]' : 'max-w-[calc(100%-2rem)]',
           ]"
           :style="{
-            width: explainSize.width + 'px',
+            ...(explainAuto ? {} : { width: explainSize.width + 'px' }),
             ...(explainPos ? { left: explainPos.x + 'px', top: explainPos.y + 'px' } : {}),
           }"
         >
@@ -273,6 +274,24 @@
           </div>
 
           <div
+            v-if="explainAuto"
+            ref="explainBodyRef"
+            class="px-3 py-2.5 text-[12px] leading-relaxed overflow-y-auto custom-scroll max-h-[min(24rem,70vh)]"
+            :class="isDark ? 'text-zinc-300' : 'text-slate-700'"
+          >
+            <p v-if="explain.error">
+              <span class="text-red-400">{{ explain.error }}</span>
+              <button @click="openExplain(explain.table, explain.col)" class="underline cursor-pointer hover:opacity-80 ml-1">
+                Coba lagi
+              </button>
+            </p>
+            <p v-else class="text-justify hyphens-auto wrap-break" lang="id">
+              <span v-if="explain.loading && !explainText" class="opacity-60">Gemono sedang menyusun penjelasan...</span><span v-html="formattedExplain"></span><span v-if="explain.loading" class="animate-pulse">▍</span>
+            </p>
+          </div>
+          <div
+            v-else
+            ref="explainBodyRef"
             class="px-3 py-2.5 text-[12px] leading-relaxed overflow-y-auto custom-scroll"
             :style="{ height: explainSize.height + 'px' }"
             :class="isDark ? 'text-zinc-300' : 'text-slate-700'"
@@ -368,13 +387,19 @@
         >
           <div
             v-if="codePanel.open"
-            class="absolute inset-y-0 right-0 z-40 w-104 max-w-[85%] flex flex-col border-l shadow-2xl"
-            :class="isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200'"
+            class="absolute inset-y-0 right-0 z-40 w-104 max-w-[85%] flex flex-col border-l shadow-2xl transition-colors duration-200"
+            :class="codeHovered ? '' : (isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200')"
+            :style="codeHovered ? { backgroundColor: '#21252b', borderColor: 'rgba(171,178,191,.2)' } : {}"
             @wheel.stop
+            @mouseenter="codeHovered = true"
+            @mouseleave="codeHovered = false"
           >
-            <div class="flex items-center gap-2 px-3 py-2 border-b shrink-0" :class="isDark ? 'border-white/10 bg-zinc-800/60' : 'border-gray-100 bg-slate-50'">
+            <div
+              class="flex items-center gap-2 px-3 py-2 border-b shrink-0 transition-colors duration-200"
+              :class="codeHovered ? 'border-[#181a1f]' : (isDark ? 'border-white/10 bg-zinc-800/60' : 'border-gray-100 bg-slate-50')"
+            >
               <div class="flex-1 min-w-0 flex items-baseline gap-1.5">
-                <span class="text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-100' : 'text-slate-700'">{{ codePanel.table }}</span>
+                <span class="text-[12px] font-semibold truncate transition-colors duration-200" :class="codeHovered ? 'text-[#abb2bf]' : (isDark ? 'text-zinc-100' : 'text-slate-700')">{{ codePanel.table }}</span>
                 <span class="text-[12px] font-normal opacity-60 truncate" :class="isDark ? 'text-zinc-400' : 'text-slate-500'">· {{ codePanel.className }}.java</span>
               </div>
               <AppTooltip text="Tutup" position="bottom">
@@ -384,14 +409,26 @@
               </AppTooltip>
             </div>
 
-            <div class="flex-1 overflow-auto custom-scroll" :class="isDark ? 'bg-zinc-950' : 'bg-slate-950'">
+            <div
+              class="flex-1 overflow-auto custom-scroll transition-colors duration-200"
+              :class="codeHovered ? '' : (isDark ? 'bg-zinc-950' : 'bg-slate-950')"
+              :style="codeHovered ? { backgroundColor: '#282c34' } : {}"
+            >
               <div v-if="codePanel.loading" class="p-3 text-[12px] text-zinc-400">Menyusun kode entity...</div>
               <div v-else-if="codePanel.error" class="p-3 text-[12px] text-red-400">{{ codePanel.error }}</div>
               <div v-else class="flex min-w-max">
-                <div class="sticky left-0 z-10 shrink-0 select-none px-3 py-3 text-right font-mono text-[11px] leading-5" :class="isDark ? 'bg-zinc-950 text-zinc-600' : 'bg-slate-950 text-slate-500'">
+                <div
+                  class="sticky left-0 z-10 shrink-0 select-none px-3 py-3 text-right font-mono text-[11px] leading-5 transition-colors duration-200"
+                  :class="codeHovered ? 'text-[#636d83]' : (isDark ? 'bg-zinc-950 text-zinc-600' : 'bg-slate-950 text-slate-500')"
+                  :style="codeHovered ? { backgroundColor: '#21252b' } : {}"
+                >
                   <div v-for="n in codeLines.length" :key="n">{{ n }}</div>
                 </div>
-                <pre class="px-3 py-3 font-mono text-[11px] leading-5" :class="isDark ? 'text-zinc-300' : 'text-slate-200'"><code>{{ codePanel.code }}</code></pre>
+                <pre
+                  class="erd-code px-3 py-3 font-mono text-[11px] leading-5 transition-colors duration-200"
+                  :class="codeHovered ? '' : (isDark ? 'text-zinc-300' : 'text-slate-200')"
+                  :style="codeHovered ? { color: '#abb2bf' } : {}"
+                ><code v-html="codeDisplay"></code></pre>
               </div>
             </div>
           </div>
@@ -870,8 +907,14 @@ const EXPLAIN_MIN_W = 288  // ~ old w-72
 const EXPLAIN_MAX_W = 720
 const EXPLAIN_MIN_H = 96
 const EXPLAIN_MAX_H = 560
-const explainSize = ref({ width: 384, height: 256 }) // matches old w-96 / max-h-64
+const explainSize = ref({ width: 384, height: 256 }) // only used once the user grabs the resize handle
 let explainResize = null
+
+// While true the panel "hugs" its content: one line while Gemono is composing,
+// growing (width up to the cap, then height) as the streamed answer arrives.
+// Grabbing the resize handle switches it to the explicit explainSize values.
+const explainAuto = ref(true)
+const explainBodyRef = ref(null)
 
 function onExplainResizeStart(e) {
   if (e.button !== 0) return
@@ -885,6 +928,17 @@ function onExplainResizeStart(e) {
     const rect = el.getBoundingClientRect()
     const vpRect = vp.getBoundingClientRect()
     explainPos.value = { x: rect.left - vpRect.left, y: rect.top - vpRect.top }
+  }
+  // While content-hugging, seed explainSize from the panel's current rendered
+  // size first so the first drag delta doesn't jump it to the old defaults.
+  if (explainAuto.value) {
+    const rect = el.getBoundingClientRect()
+    const bodyRect = explainBodyRef.value?.getBoundingClientRect()
+    explainSize.value = {
+      width: Math.round(rect.width),
+      height: Math.round(bodyRect ? bodyRect.height : rect.height),
+    }
+    explainAuto.value = false
   }
   explainResize = { startX: e.clientX, startY: e.clientY, origW: explainSize.value.width, origH: explainSize.value.height }
 }
@@ -925,6 +979,7 @@ function openExplain(table, col) {
   explain.value = { open: true, loading: true, error: null, table, col }
   explainText.value = ''
   explainPos.value = null // every open starts from the default top-right spot
+  explainAuto.value = true // every open starts content-hugging (one line while loading)
 
   adminService.streamErdExplain(
     {
@@ -956,8 +1011,40 @@ function closeExplain() {
 const codePanel = ref({ open: false, loading: false, error: null, table: '', className: '', code: '' })
 const codeLines = computed(() => (codePanel.value.code ? codePanel.value.code.split('\n') : []))
 
+// ---- One Dark Pro Italic Vivid hover theme -----------------------------------
+// While the cursor is over the code sidebar the whole panel switches to the
+// One Dark Pro Italic Vivid palette: #282c34 editor / #21252b chrome, italic
+// purple keywords, italic yellow types, blue methods, green strings, orange
+// numbers and italic gray comments (token CSS lives in the <style> block).
+const codeHovered = ref(false)
+
+function escapeHtml(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Comments and strings first so their contents are never re-tokenized;
+// a capitalized identifier is a type, an ALL_CAPS one a constant (orange).
+const JAVA_TOKEN_RE = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(@[A-Za-z_$][\w$]*)|\b(package|import|public|private|protected|class|interface|enum|record|extends|implements|static|final|void|return|new|this|super|if|else|for|while|do|switch|case|default|break|continue|try|catch|finally|throw|throws|null|true|false|abstract|transient|volatile|synchronized|native|instanceof|var)\b|\b([A-Z][A-Za-z0-9_$]*)\b|\b(\d[\d_]*(?:\.[\d_]+)?(?:[eE][+-]?\d+)?[fFdDlL]?|0[xX][0-9a-fA-F_]+[lL]?)\b|\b([a-z_$][\w$]*)(?=\s*\()/g
+
+const highlightedCode = computed(() =>
+  escapeHtml(codePanel.value.code).replace(JAVA_TOKEN_RE, (m, comment, str, anno, kw, type, num, method) => {
+    if (comment) return `<span class="tok-cmt">${m}</span>`
+    if (str) return `<span class="tok-str">${m}</span>`
+    if (anno) return `<span class="tok-anno">${m}</span>`
+    if (kw) return `<span class="tok-kw">${m}</span>`
+    if (type) return `<span class="${/^[A-Z0-9_]+$/.test(m) && m.length > 1 ? 'tok-num' : 'tok-type'}">${m}</span>`
+    if (num) return `<span class="tok-num">${m}</span>`
+    if (method) return `<span class="tok-mth">${m}</span>`
+    return m
+  }),
+)
+
+// Hover → highlighted rendering; otherwise the escaped plain text.
+const codeDisplay = computed(() => (codeHovered.value ? highlightedCode.value : escapeHtml(codePanel.value.code)))
+
 async function openCodePanel(tableName) {
   codePanel.value = { open: true, loading: true, error: null, table: tableName, className: '', code: '' }
+  codeHovered.value = false
   try {
     const data = await adminService.getErdTableCode(tableName)
     codePanel.value.className = data.className
@@ -1218,3 +1305,16 @@ onUnmounted(() => {
   if (explainController) explainController.abort()
 })
 </script>
+
+<style>
+/* One Dark Pro Italic Vivid token colors — applied to the code sidebar while
+   hovered. Must stay unscoped: the highlighted markup is injected via v-html,
+   so the spans never receive the component's scoped data attribute. */
+.erd-code .tok-kw { color: #c678dd; font-style: italic; }
+.erd-code .tok-type { color: #e5c07b; font-style: italic; }
+.erd-code .tok-str { color: #98c379; }
+.erd-code .tok-num { color: #d19a66; }
+.erd-code .tok-cmt { color: #5c6370; font-style: italic; }
+.erd-code .tok-anno { color: #e5c07b; }
+.erd-code .tok-mth { color: #61afef; }
+</style>
