@@ -305,11 +305,10 @@
           </div>
 
           <div class="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize touch-none" @mousedown.stop="onExplainResizeStart">
-            <AppTooltip text="Tarik untuk mengubah ukuran" position="top" class="h-full w-full">
-              <svg viewBox="0 0 16 16" class="h-full w-full opacity-40 hover:opacity-80 transition-opacity" :class="isDark ? 'text-zinc-400' : 'text-slate-400'">
-                <path d="M13 3 L3 13 M13 8 L8 13 M13 13 L13 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" />
-              </svg>
-            </AppTooltip>
+            <!-- No hover tooltip (per design) — the grip icon alone signals resize. -->
+            <svg viewBox="0 0 16 16" class="h-full w-full opacity-40 hover:opacity-80 transition-opacity" :class="isDark ? 'text-zinc-400' : 'text-slate-400'">
+              <path d="M13 3 L3 13 M13 8 L8 13 M13 13 L13 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" />
+            </svg>
           </div>
         </div>
 
@@ -457,14 +456,13 @@
           class="absolute -top-1 left-0 right-0 h-2 z-20 cursor-ns-resize group"
           @mousedown.stop="onDataPanelResizeStart"
         >
-          <AppTooltip text="Tarik untuk mengubah tinggi panel" position="top" class="h-full w-full justify-center">
-            <div
-              class="mt-0.5 h-1 w-10 rounded-full transition-colors"
-              :class="[
-                dataPanelResizing ? 'bg-sky-400' : (isDark ? 'bg-zinc-600 group-hover:bg-sky-400' : 'bg-gray-300 group-hover:bg-sky-500'),
-              ]"
-            />
-          </AppTooltip>
+          <!-- No hover tooltip (per design) — the grip bar alone signals resize. -->
+          <div
+            class="mt-0.5 mx-auto h-1 w-10 rounded-full transition-colors"
+            :class="[
+              dataPanelResizing ? 'bg-sky-400' : (isDark ? 'bg-zinc-600 group-hover:bg-sky-400' : 'bg-gray-300 group-hover:bg-sky-500'),
+            ]"
+          />
         </div>
 
         <div class="h-full overflow-hidden border-t" :class="isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200'">
