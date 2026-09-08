@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-full rounded-md border overflow-hidden" :class="isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'">
-    <div class="flex items-center justify-between px-3 py-2 border-b shrink-0" :class="headClass">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-zinc-800 shrink-0 bg-zinc-900 text-white">
       <div class="flex items-center gap-1.5 text-xs font-semibold">
         <span>{{ META[sourceKey].label }}</span>
       </div>
@@ -65,12 +65,6 @@ const META = {
   FRONTEND: { label: 'Frontend' },
   IOT: { label: 'IoT' },
 }
-
-// Same neutral header style for every source — the source is already spelled out
-// in the label, so it doesn't need a color to identify it too.
-const headClass = computed(() =>
-  props.isDark ? 'bg-zinc-800/60 text-zinc-300 border-zinc-800' : 'bg-gray-50 text-gray-600 border-gray-100',
-)
 
 const LEVEL_BAR = {
   ERROR: 'border-l-red-500', WARN: 'border-l-amber-500', INFO: 'border-l-sky-500', DEBUG: 'border-l-zinc-400',
