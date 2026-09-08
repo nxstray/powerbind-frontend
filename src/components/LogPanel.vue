@@ -17,10 +17,10 @@
     </div>
 
     <!-- Fills all remaining panel height (was a fixed px height before, which cut logs off before the panel's true bottom edge) -->
-    <!-- -mr-1.5/pr-1.5 reclaim the 6px the custom scrollbar reserves (main.css sets
-         ::-webkit-scrollbar width to 6px), so row hover backgrounds reach the panel's
-         true right edge instead of stopping short at an invisible scrollbar gutter. -->
-    <div ref="scrollEl" @scroll="onScroll" class="custom-scroll bg-zinc-900 overflow-y-auto flex-1 min-h-0 font-mono text-[11.5px] leading-5 -mr-1.5 pr-1.5">
+    <!-- The scrollbar stays fully INSIDE the panel: the old -mr-1.5 hack slid the 6px
+         custom scrollbar past the panel's right edge where overflow-hidden clipped it
+         in half, leaving a thin sliver. See the .log-scroll style block below. -->
+    <div ref="scrollEl" @scroll="onScroll" class="log-scroll bg-zinc-900 overflow-y-auto flex-1 min-h-0 font-mono text-[11.5px] leading-5">
       <div v-if="logs.length === 0" class="h-full flex flex-col items-center justify-center text-zinc-500 gap-1 py-10">
         <p class="text-xs">Tidak ada log</p>
       </div>
@@ -114,3 +114,24 @@ function fmtFull(ms) {
   return new Date(ms).toLocaleString('id-ID', { hour12: false })
 }
 </script>
+
+<style scoped>
+/* Log area scrollbar — fully visible INSIDE the panel and easy to grab.
+   The log body is always dark (bg-zinc-900), so zinc tones work in both themes. */
+.log-scroll {
+  scrollbar-color: #52525b transparent; /* zinc-600 thumb (Firefox) */
+}
+.log-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.log-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.log-scroll::-webkit-scrollbar-thumb {
+  background-color: #52525b; /* zinc-600 */
+  border-radius: 9999px;
+}
+.log-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #71717a; /* zinc-500 */
+}
+</style>
