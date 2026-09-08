@@ -3,11 +3,11 @@
     <slot />
     <span
       v-if="text"
-      class="pointer-events-none absolute z-50 whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-[10px] font-medium text-white opacity-0 scale-95 shadow-lg transition-all duration-200 ease-out group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100"
+      class="pointer-events-none absolute z-50 whitespace-nowrap rounded bg-gray-700 px-2 py-1 text-[9px] font-medium text-white opacity-0 scale-95 shadow-lg transition-all duration-200 ease-out group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100"
       :class="positionClass"
     >
       {{ text }}
-      <span class="absolute w-1.5 h-1.5 bg-gray-900 rotate-45" :class="arrowClass" />
+      <span class="absolute w-1.5 h-1.5 bg-gray-700 rotate-45" :class="arrowClass" />
     </span>
   </div>
 </template>

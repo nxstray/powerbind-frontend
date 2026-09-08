@@ -37,7 +37,7 @@
                 : 'text-white/60 hover:bg-white/10 hover:text-white'
             ]"
           >
-            <!-- Icon animation logic: scale for all, rotation for sparkle, door opening for home -->
+            <!-- Icon animation logic: scale for all, pulse for the Gemono logo, door opening for home -->
             <component 
               :is="item.icon" 
               :size="17" 
@@ -84,7 +84,7 @@
     </aside>
 
     <!-- Main -->
-    <div class="flex-1 flex flex-col min-w-0 relative overflow-hidden">
+    <div class="flex-1 flex flex-col min-w-0 relative overflow-hidden h-screen">
       
       <!-- Giant background logo -->
       <div class="absolute inset-0 pointer-events-none flex items-center justify-center z-0 opacity-5">
@@ -99,7 +99,7 @@
           </button>
           <div>
             <h1 class="text-sm md:text-base font-bold text-gray-900">Ringkasan</h1>
-            <p class="text-[10px] md:text-xs text-gray-400 hidden sm:block">{{ currentDate }}</p>
+            <p class="text-[10px] md:text-xs hidden sm:block" :style="{ color: accentColor }">{{ currentDate }}</p>
           </div>
         </div>
         
@@ -110,8 +110,8 @@
             :class="weatherData.themeWidget"
           >
             <WeatherWidget :code="weatherData.code" :is-day="weatherData.isDay" :size="20" />
-            <span class="text-xs font-bold">{{ weatherData.temp }}°C</span>
-            <span class="text-[10px] opacity-80 hidden sm:block">{{ weatherData.condition }}</span>
+            <span class="text-xs font-bold leading-none">{{ weatherData.temp }}°C</span>
+            <span class="text-xs opacity-70 leading-none hidden sm:block">{{ weatherData.condition }}</span>
           </div>
 
           <!-- Offline indicator -->
@@ -315,6 +315,7 @@
     <ConfirmDialog
       :open="logoutConfirm.open"
       :loading="logoutConfirm.loading"
+      danger
       title="Keluar dari Akun"
       message="Kamu akan keluar dari sesi ini. Lanjutkan?"
       confirm-text="Keluar"
@@ -349,7 +350,9 @@ import TrendingUpIcon from '@/components/icons/TrendingUpIcon.vue'
 import LogOutIcon from '@/components/icons/LogOutIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
-import SparklesIcon from '@/components/icons/SparklesIcon.vue'
+import GemonoIcon from '@/components/icons/GemonoIcon.vue'
+import DatabaseIcon from '@/components/icons/DatabaseIcon.vue'
+import TerminalIcon from '@/components/icons/TerminalIcon.vue'
 
 // Weather Icons
 import SunIcon from '@/components/icons/SunIcon.vue'
@@ -457,10 +460,21 @@ async function fetchWeather() {
   }
 }
 
-const navItems = [
-  { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
-  { name: 'Gemono', routeName: 'agent', to: '/agent', icon: SparklesIcon },
-]
+// ERD/Log are admin-only — the role comes from the profile the authStore
+// fetches on mount, so the items appear only for ADMIN accounts.
+const navItems = computed(() => {
+  const items = [
+    { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
+    { name: 'Gemono', routeName: 'agent', to: '/agent', icon: GemonoIcon },
+  ]
+  if (authStore.user?.role === 'ADMIN') {
+    items.push(
+      { name: 'ERD', routeName: 'erd', to: '/erd', icon: DatabaseIcon },
+      { name: 'Log', routeName: 'log', to: '/log', icon: TerminalIcon },
+    )
+  }
+  return items
+})
 
 const hourOptions = [
   { label: '6 Jam Terakhir', value: 6 },

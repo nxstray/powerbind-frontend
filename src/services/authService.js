@@ -15,6 +15,11 @@ const authService = {
   async logout(refreshToken) {
     await api.post('/api/auth/logout', { refreshToken })
   },
+
+  async changePassword(currentPassword, newPassword) {
+    const res = await api.put('/api/auth/change-password', { currentPassword, newPassword })
+    return res.data.data
+  },
 }
 
 export default authService

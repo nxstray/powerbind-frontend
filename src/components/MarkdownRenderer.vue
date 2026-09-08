@@ -79,7 +79,9 @@ watch(() => props.content, update)
   font-weight: 700;
 }
 .markdown-body :deep(code) {
-  background: rgba(0,0,0,0.06);
+  /* Derived from the inherited text color instead of a fixed black tint, so
+     it stays legible against any weather-theme background (sore/malam/etc). */
+  background: color-mix(in srgb, currentColor 10%, transparent);
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 0.85em;
@@ -112,13 +114,19 @@ watch(() => props.content, update)
   font-size: 0.85em;
 }
 .markdown-body :deep(th), .markdown-body :deep(td) {
-  border: 1px solid #e5e7eb;
+  /* Grid line color now scales with the current text color (currentColor)
+     instead of a fixed light gray — this keeps it visible on light-ish
+     theme backgrounds like "sore" (orange/peach) as well as dark ones. */
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   padding: 0.4rem 0.6rem;
   text-align: left;
 }
 .markdown-body :deep(th) {
-  background: rgba(0,0,0,0.04);
+  background: color-mix(in srgb, currentColor 12%, transparent);
   font-weight: 600;
+}
+.markdown-body :deep(tr:nth-child(even) td) {
+  background: color-mix(in srgb, currentColor 5%, transparent);
 }
 .markdown-body :deep(a) {
   color: #0f8cd5;
@@ -137,7 +145,7 @@ watch(() => props.content, update)
 .markdown-body :deep(blockquote) {
   border-left: 3px solid #0f8cd5;
   padding-left: 0.75rem;
-  color: #6b7280;
+  color: color-mix(in srgb, currentColor 70%, transparent);
   margin: 0.5rem 0;
 }
 </style>

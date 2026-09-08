@@ -53,6 +53,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  // Manually turn a room's relay on/off — called after the user confirms via
+  // the validation dialog. Updates local state immediately so the UI doesn't
+  // wait for the next WebSocket push.
+  async function setRoomRelay(roomId, relayOn) {
+    const updated = await dashboardService.setRoomRelay(roomId, relayOn)
+
+    if (summary.value?.rooms) {
+      const idx = summary.value.rooms.findIndex((r) => r.id === roomId)
+      if (idx !== -1) {
+        summary.value.rooms[idx] = { ...summary.value.rooms[idx], ...updated }
+      }
+      summary.value.activeDevices = summary.value.rooms.filter((r) => r.relayOn).length
+    }
+
+    return updated
+  }
+
   return {
     summary,
     powerHistory,
@@ -62,5 +79,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     fetchPowerHistory,
     updateRoomStatus,
     updateCurrentWatts,
+    setRoomRelay,
   }
 })

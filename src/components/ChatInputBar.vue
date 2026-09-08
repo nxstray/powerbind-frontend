@@ -42,8 +42,8 @@
         @input="onInput"
         @keydown.enter.exact.prevent="$emit('send')"
         rows="1"
-        placeholder="Tanya soal pemakaian energi hari ini..."
-        class="chat-input-textarea flex-1 bg-transparent border-none outline-none text-sm md:text-base placeholder-gray-400 w-full py-2 px-2 resize-none leading-relaxed overflow-y-auto transition-[height] duration-100 ease-out"
+        placeholder="Tulis pesan"
+        class="chat-input-textarea flex-1 bg-transparent border-none outline-none text-sm md:text-base placeholder-gray-400 w-full pt-3 pb-2 px-2 resize-none leading-relaxed overflow-y-auto transition-[height] duration-100 ease-out"
         :class="isDark ? 'text-white' : 'text-gray-800'"
       />
 

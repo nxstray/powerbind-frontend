@@ -154,6 +154,16 @@ const agentService = {
     return data?.data || []
   },
 
+  // Rename a conversation's title (inline "click to rename" in the top bar)
+  async renameConversation(conversationId, title) {
+    const res = await fetch(`${BASE_URL}/api/agent/conversations/${conversationId}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ title }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  },
+
   // Delete a conversation
   async deleteConversation(conversationId) {
     await fetch(`${BASE_URL}/api/agent/conversations/${conversationId}`, {

@@ -78,7 +78,7 @@
           <div
             v-if="!editingTitle"
             @click="startEditTitle"
-            class="inline-flex items-center max-w-35 sm:max-w- px-2.5 py-1 rounded-lg border border-transparent text-xs font-medium truncate cursor-text transition hover:opacity-80"
+            class="inline-flex items-center max-w-35 px-2.5 py-1 rounded-lg border border-transparent text-xs font-medium truncate cursor-text transition-all duration-300 ease-out hover:max-w-105 hover:opacity-80"
             :style="{ color: accentColor }"
             title="Klik untuk ganti nama percakapan"
           >
@@ -205,7 +205,7 @@
             </div>
 
             <!-- Agent message — no sparkles avatar / gradient background -->
-            <div v-else class="self-start max-w-full md:max-w-[85%] w-full">
+            <div v-else class="self-start max-w-full md:max-w-[85%] w-full ml-2 md:ml-4">
               <MarkdownRenderer :content="msg.content" :class="isDark ? 'text-gray-200' : 'text-gray-700'" class="text-sm md:text-base" />
               <!-- Timestamp now follows the theme so it stays legible in dark mode -->
               <p class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">
@@ -295,7 +295,9 @@ import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import ChatInputBar from '@/components/ChatInputBar.vue'
 import Toast from '@/components/Toast.vue'
 import HomeIcon from '@/components/icons/HomeIcon.vue'
-import SparklesIcon from '@/components/icons/SparklesIcon.vue'
+import GemonoIcon from '@/components/icons/GemonoIcon.vue'
+import DatabaseIcon from '@/components/icons/DatabaseIcon.vue'
+import TerminalIcon from '@/components/icons/TerminalIcon.vue'
 import LogOutIcon from '@/components/icons/LogOutIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
@@ -406,10 +408,18 @@ async function saveTitle() {
 // away and clicking back into it from the sidebar resumes the same thread.
 const navItems = computed(() => {
   const lastId = localStorage.getItem(LAST_CONVERSATION_KEY)
-  return [
+  const items = [
     { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
-    { name: 'Gemono', routeName: 'agent', to: lastId ? `/agent/${lastId}` : '/agent', icon: SparklesIcon },
+    { name: 'Gemono', routeName: 'agent', to: lastId ? `/agent/${lastId}` : '/agent', icon: GemonoIcon },
   ]
+  // ERD/Log are admin-only — the role comes from the profile in authStore.
+  if (authStore.user?.role === 'ADMIN') {
+    items.push(
+      { name: 'ERD', routeName: 'erd', to: '/erd', icon: DatabaseIcon },
+      { name: 'Log', routeName: 'log', to: '/log', icon: TerminalIcon },
+    )
+  }
+  return items
 })
 
 const weatherData = ref({ sidebarColor: 'from-[#0f8cd5]' })

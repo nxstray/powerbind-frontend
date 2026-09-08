@@ -41,12 +41,17 @@
 
           <p v-if="errorMsg" class="text-xs text-red-500 text-center -mt-1">{{ errorMsg }}</p>
 
+          <!-- Was an <input type="submit"> whose value just swapped to the text
+               "Sedang masuk" — switched to a <button> so a real animated
+               loading indicator (3-dot pulse) can render in its place instead
+               of static text. -->
           <div class="inputBx">
-            <input
-              type="submit"
-              :value="loading ? 'Sedang masuk' : 'Masuk'"
-              :disabled="loading"
-            />
+            <button type="submit" class="submitBtn" :disabled="loading">
+              <span v-if="!loading">Masuk</span>
+              <span v-else class="loadingDots" aria-label="Sedang masuk">
+                <span></span><span></span><span></span>
+              </span>
+            </button>
           </div>
         </form>
       </div>
@@ -175,27 +180,70 @@ async function handleLogin() {
   color: #0f8cd5;
 }
 
-/* Sign in button */
-.inputBx input[type='submit'] {
+/* Sign in button — same look as before, now a <button> instead of
+   <input type="submit"> so it can render the loading-dots animation */
+.submitBtn {
+  width: 100%;
+  padding: 0.5rem 0.9rem;
   cursor: pointer;
   border: none;
+  border-radius: 0.65rem;
   color: white;
   font-weight: 600;
+  font-size: 0.85rem;
+  font-family: inherit;
   background: linear-gradient(45deg, #0f8cd5, #38bdf8);
   background-size: 200% 200%;
   background-position: 0% 50%;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.1rem;
   transition: background-position 0.5s ease, transform 0.15s ease, box-shadow 0.3s ease;
 }
-.inputBx input[type='submit']:hover:not(:disabled) {
+.submitBtn:hover:not(:disabled) {
   background-position: 100% 50%;
   box-shadow: 0 4px 14px rgba(15, 140, 213, 0.35);
 }
-.inputBx input[type='submit']:active:not(:disabled) {
+.submitBtn:active:not(:disabled) {
   transform: translateY(0);
 }
-.inputBx input[type='submit']:disabled {
-  opacity: 0.6;
+.submitBtn:disabled {
+  opacity: 0.85;
   cursor: not-allowed;
+}
+
+/* Loading dots — the 3-dot pulse animation from the Button State Builder
+   codepen (https://codepen.io/Margarita-the-solid/pen/XJpgEXm), adapted here
+   to replace the static "Sedang masuk" text. */
+.loadingDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.loadingDots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.8;
+  animation: loginDotPulse 1.1s ease-in-out infinite;
+}
+.loadingDots span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.loadingDots span:nth-child(3) {
+  animation-delay: 0.36s;
+}
+@keyframes loginDotPulse {
+  0%, 80%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.5);
+    opacity: 1;
+  }
 }
 </style>

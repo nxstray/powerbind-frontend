@@ -8,10 +8,20 @@
       </div>
 
       <div class="flex items-center gap-1.5 shrink-0">
+        <span
+          :class="room.presenceDetected
+            ? 'bg-[#7ADAA5]/20 text-[#16a34a]'
+            : 'bg-gray-100 text-gray-400'"
+          class="text-[10px] font-semibold px-2 py-0.5 rounded-md shrink-0"
+        >
+          {{ room.presenceDetected ? 'Occupied' : 'Empty' }}
+        </span>
+
         <!-- Power toggle — small round icon button. Green = relay on, red = relay off.
              Desktop: a click opens the confirmation dialog directly.
              Mobile: press-and-hold with a filling ring, then the confirmation dialog opens. -->
-        <AppTooltip :text="room.relayOn ? 'Tahan untuk mematikan perangkat' : 'Perangkat sudah mati'" position="top">
+        <AppTooltip :text="room.relayOn ? 'Tekan untuk mematikan perangkat' : 'Perangkat sudah mati'" position="top">
+          <!-- 3D push button toggle with glow effect (relay on = glowing, relay off = dim) -->
           <button
             type="button"
             :disabled="!room.relayOn"
@@ -20,12 +30,10 @@
             @pointerup="cancelHold"
             @pointerleave="cancelHold"
             @pointercancel="cancelHold"
-            class="relative w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300 select-none touch-none"
-            :class="room.relayOn
-              ? 'bg-[#16a34a] text-white hover:bg-[#15803d] cursor-pointer'
-              : 'bg-red-600 text-white hover:bg-red-700 cursor-default'"
+            class="power-push-btn relative flex items-center justify-center select-none touch-none"
+            :class="room.relayOn ? 'power-push-btn--on cursor-pointer' : 'cursor-default'"
           >
-            <PowerIcon :size="14" />
+            <PowerIcon :size="14" class="power-push-btn__icon" />
 
             <!-- Hold-to-confirm progress ring (mobile only) -->
             <svg v-if="room.relayOn" class="absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 28 28">
@@ -45,15 +53,6 @@
             </svg>
           </button>
         </AppTooltip>
-
-        <span
-          :class="room.presenceDetected
-            ? 'bg-[#7ADAA5]/20 text-[#16a34a]'
-            : 'bg-gray-100 text-gray-400'"
-          class="text-[10px] font-semibold px-2 py-0.5 rounded-lg shrink-0"
-        >
-          {{ room.presenceDetected ? 'Occupied' : 'Empty' }}
-        </span>
       </div>
     </div>
 
@@ -145,3 +144,60 @@ function cancelHold() {
   holding.value = false
 }
 </script>
+
+<style scoped>
+/* 3D push button toggle with glow effect, adapted from the CSS toggle-button collection by @AshNolan_ */
+.power-push-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #dfdfdf;
+  box-shadow:
+    0 2px 4px 0 #a4a4a4,
+    0 0 0 2px #e5e5e5,
+    0 0 4px 1px transparent,
+    0 0 0 3px #f9f9f9;
+  transition: box-shadow 200ms ease-in-out, background-color 200ms ease-in-out, transform 150ms ease-in-out;
+}
+
+.power-push-btn__icon {
+  color: #aaa;
+  transition: color 200ms ease-in-out;
+}
+
+/* Hover — off/disabled state: subtle lift, no color change since it isn't interactive */
+.power-push-btn:not(.power-push-btn--on):hover {
+  box-shadow:
+    0 2px 5px 0 #999,
+    0 0 0 2px #d8d8d8,
+    0 0 6px 1px transparent,
+    0 0 0 3px #f9f9f9;
+}
+
+/* Relay on — glowing state */
+.power-push-btn--on {
+  box-shadow:
+    0 0 4px 0 #0077b3,
+    0 0 0 2px #0094e0,
+    0 0 12px 2px #0094e0,
+    0 0 0 3px #f9f9f9;
+}
+
+.power-push-btn--on .power-push-btn__icon {
+  color: #0094e0;
+}
+
+/* Hover — on/interactive state: glow intensifies and knob lifts slightly */
+.power-push-btn--on:hover {
+  box-shadow:
+    0 0 6px 0 #005c8a,
+    0 0 0 2px #0077b3,
+    0 0 18px 4px #0094e0,
+    0 0 0 3px #f9f9f9;
+  transform: scale(1.06);
+}
+
+.power-push-btn--on:hover .power-push-btn__icon {
+  color: #33b1f0;
+}
+</style>

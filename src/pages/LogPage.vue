@@ -64,7 +64,7 @@
 
     <div class="flex-1 flex flex-col min-w-0 h-screen">
       <!-- Logs volume — no card wrapper, spans the full canvas width -->
-      <div class="shrink-0 px-4 md:px-6 pt-3" :class="isDark ? 'bg-black/20' : 'bg-white/80'">
+      <div class="shrink-0 px-4 md:px-6 pt-2 pb-1" :class="isDark ? 'bg-black/20' : 'bg-white/80'">
         <div class="flex items-center gap-3 mb-1 md:hidden">
           <button @click="sidebarOpen = true" :class="isDark ? 'text-white/70' : 'text-gray-500'">
             <MenuIcon :size="20" />
@@ -73,13 +73,23 @@
         <LogsVolumeChart :logs="logs" :range="range" :is-dark="isDark" />
       </div>
 
-      <!-- Range dropdown row — stays right under the chart, not part of the boundary below -->
+      <!-- Boundary — badges + range dropdown together, raised right up against the log panels -->
       <div
-        class="relative z-20 shrink-0 flex items-center justify-end px-4 md:px-6 pb-2"
-        :class="isDark ? 'bg-black/20' : 'bg-white/80'"
+        class="relative z-20 shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 pt-2 pb-2 border-b"
+        :class="isDark ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-100'"
       >
+        <button
+          v-for="lvl in LEVEL_KEYS"
+          :key="lvl"
+          @click="toggleLevel(lvl)"
+          class="text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
+          :class="activeLevels.has(lvl) ? [chipActiveClass, LEVEL_TEXT[lvl]] : chipInactiveClass"
+        >
+          {{ lvl }}
+        </button>
+
         <!-- Range dropdown — same trigger/panel/chevron animation pattern as the Power Usage chart on the dashboard -->
-        <div class="relative" ref="rangeDropdownRef">
+        <div class="relative ml-auto" ref="rangeDropdownRef">
           <button
             @click="rangeDropdownOpen = !rangeDropdownOpen"
             class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
@@ -106,24 +116,8 @@
         </div>
       </div>
 
-      <!-- Boundary — badges only, sitting right on top of the log panels -->
-      <div
-        class="shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 py-2.5 border-b"
-        :class="isDark ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-100'"
-      >
-        <button
-          v-for="lvl in LEVEL_KEYS"
-          :key="lvl"
-          @click="toggleLevel(lvl)"
-          class="text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
-          :class="activeLevels.has(lvl) ? [chipActiveClass, LEVEL_TEXT[lvl]] : chipInactiveClass"
-        >
-          {{ lvl }}
-        </button>
-      </div>
-
       <!-- panels: fills all remaining viewport height, no page-level scroll — each panel scrolls internally -->
-      <div class="flex-1 min-h-0 p-4 sm:p-5 grid gap-3" :class="focused ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'">
+      <div class="flex-1 min-h-0 pt-0 px-4 sm:px-5 pb-4 sm:pb-5 grid gap-3" :class="focused ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'">
         <LogPanel
           v-for="key in visibleSources"
           :key="key"
@@ -164,7 +158,7 @@ import { useAuthStore } from '@/stores/authStore'
 import adminService from '@/services/adminService'
 
 import HomeIcon from '@/components/icons/HomeIcon.vue'
-import SparklesIcon from '@/components/icons/SparklesIcon.vue'
+import GemonoIcon from '@/components/icons/GemonoIcon.vue'
 import DatabaseIcon from '@/components/icons/DatabaseIcon.vue'
 import TerminalIcon from '@/components/icons/TerminalIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
@@ -182,7 +176,7 @@ const sidebarOpen = ref(false)
 
 const navItems = [
   { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
-  { name: 'Gemono', routeName: 'agent', to: '/agent', icon: SparklesIcon },
+  { name: 'Gemono', routeName: 'agent', to: '/agent', icon: GemonoIcon },
   { name: 'ERD', routeName: 'erd', to: '/erd', icon: DatabaseIcon },
   { name: 'Log', routeName: 'log', to: '/log', icon: TerminalIcon },
 ]

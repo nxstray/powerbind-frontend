@@ -233,7 +233,7 @@
             explainPos ? '' : 'top-4 right-4',
             explainAuto ? 'w-max' : '',
             explainAuto
-              ? (explain.loading && !explainText ? 'max-w-[min(16rem,calc(100%-2rem))]' : 'max-w-[min(32rem,calc(100%-2rem))]')
+              ? (explain.loading && !explainText ? 'max-w-[min(18rem,calc(100%-2rem))]' : 'max-w-[min(32rem,calc(100%-2rem))]')
               : 'max-w-[calc(100%-2rem)]',
           ]"
           :style="{
@@ -280,7 +280,9 @@
                 Coba lagi
               </button>
             </p>
-            <p v-else class="text-justify hyphens-auto wrap-break" lang="id">
+            <!-- text-justify only once the answer exists — a justified loading
+                 line that wraps would stretch the words with huge gaps -->
+            <p v-else :class="['hyphens-auto wrap-break', explainText ? 'text-justify' : '']" lang="id">
               <span v-if="explain.loading && !explainText" class="opacity-60">Gemono sedang menyusun penjelasan...</span><span v-html="formattedExplain"></span><span v-if="explain.loading" class="animate-pulse">▍</span>
             </p>
           </div>
@@ -297,7 +299,7 @@
                 Coba lagi
               </button>
             </p>
-            <p v-else class="text-justify hyphens-auto wrap-break" lang="id">
+            <p v-else :class="['hyphens-auto wrap-break', explainText ? 'text-justify' : '']" lang="id">
               <span v-if="explain.loading && !explainText" class="opacity-60">Gemono sedang menyusun penjelasan...</span><span v-html="formattedExplain"></span><span v-if="explain.loading" class="animate-pulse">▍</span>
             </p>
           </div>

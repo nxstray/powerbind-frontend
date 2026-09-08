@@ -16,6 +16,13 @@ const dashboardService = {
     const res = await api.get('/api/rooms')
     return res.data.data
   },
+
+  // Manual relay control — called only after the user confirms via the
+  // validation dialog on the dashboard.
+  async setRoomRelay(roomId, relayOn) {
+    const res = await api.patch(`/api/rooms/${roomId}/relay`, { relayOn })
+    return res.data.data
+  },
 }
 
 export default dashboardService
