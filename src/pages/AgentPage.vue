@@ -285,13 +285,16 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted, onActivated, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, onActivated, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { useAuthStore } from '@/stores/authStore'
 import agentService from '@/services/agentService'
-import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+// Lazy-loaded so marked + DOMPurify (and the on-demand mermaid chunk it can
+// pull) stay out of the main agent page chunk until the first agent message
+// actually needs to be rendered.
+const MarkdownRenderer = defineAsyncComponent(() => import('@/components/MarkdownRenderer.vue'))
 import ChatInputBar from '@/components/ChatInputBar.vue'
 import Toast from '@/components/Toast.vue'
 import HomeIcon from '@/components/icons/HomeIcon.vue'
