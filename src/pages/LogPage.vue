@@ -64,7 +64,7 @@
 
     <div class="flex-1 flex flex-col min-w-0 h-screen">
       <!-- Logs volume — no card wrapper, spans the full canvas width -->
-      <div class="shrink-0 px-4 md:px-6 pt-2 pb-1" :class="isDark ? 'bg-black/20' : 'bg-white/80'">
+      <div class="shrink-0 px-4 md:px-6 pt-2 pb-1">
         <div class="flex items-center gap-3 mb-1 md:hidden">
           <button @click="sidebarOpen = true" :class="isDark ? 'text-white/70' : 'text-gray-500'">
             <MenuIcon :size="20" />
@@ -74,10 +74,7 @@
       </div>
 
       <!-- Boundary — badges + range dropdown together, raised right up against the log panels -->
-      <div
-        class="relative z-20 shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 pt-2 pb-2 border-b"
-        :class="isDark ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-100'"
-      >
+      <div class="relative z-20 shrink-0 flex flex-wrap items-center gap-2 px-4 md:px-6 pt-2 pb-2">
         <button
           v-for="lvl in LEVEL_KEYS"
           :key="lvl"
@@ -290,7 +287,7 @@ async function fetchLogs() {
     const data = await adminService.queryLogs({ source: 'ALL', since: range.value, limit: 400 })
     logs.value = data
     loadError.value = false
-  } catch (e) {
+  } catch {
     loadError.value = true
   }
 }
