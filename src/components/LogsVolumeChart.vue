@@ -257,9 +257,18 @@ const hoverBucket = computed(() => {
   return buckets.value[idx]
 })
 
+// The tooltip follows the crosshair with a fixed gap, and flips to the left
+// side of the cursor once past the halfway point — translating by its own
+// width keeps it glued to the cursor all the way to the panel's right edge
+// (the old min(..., 68%) clamp made it stop at an invisible wall instead).
 const tooltipStyle = computed(() => {
   if (hoverX.value === null) return {}
   const xPct = (hoverX.value / W) * 100
-  return { left: `min(${xPct}%, 68%)`, top: '4px' }
+  const flip = xPct > 50
+  return {
+    top: '4px',
+    left: `${xPct}%`,
+    transform: flip ? 'translateX(calc(-100% - 14px))' : 'translateX(14px)',
+  }
 })
 </script>
