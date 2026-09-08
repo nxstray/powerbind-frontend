@@ -43,6 +43,27 @@ function loadMermaid() {
   return mermaidPromise
 }
 
+// Prefetch mermaid as soon as an OPEN fence (```mermaid) shows up in the
+// content — while streaming, the fence is written seconds before the closing
+// fence arrives, so the chunk download overlaps with the text still streaming
+// in and the diagram renders without extra wait. False positives are
+// near-zero: an opened mermaid fence almost always precedes a real diagram.
+// Fire-and-forget; the promise is cached, so renderMermaidBlocks later just
+// awaits the same promise (no double download).
+const MERMAID_HINT = /```mermaid/
+const PREFETCH_RETRY_MS = 30_000
+let lastPrefetchAttempt = 0
+
+function maybePrefetchMermaid(text) {
+  if (!text || !MERMAID_HINT.test(text)) return
+  const now = Date.now()
+  if (now - lastPrefetchAttempt < PREFETCH_RETRY_MS) return
+  lastPrefetchAttempt = now
+  // Throttled so a failure (e.g. offline while streaming) isn't retried on
+  // every token; the real render path re-raises errors when it matters.
+  loadMermaid().catch(() => {})
+}
+
 function processContent(text) {
   if (!text) return { html: '', mermaidBlocks: [] }
 
@@ -85,6 +106,7 @@ async function renderMermaidBlocks(blocks) {
 }
 
 async function update() {
+  maybePrefetchMermaid(props.content)
   const { html, mermaidBlocks } = processContent(props.content)
   rendered.value = html
   if (mermaidBlocks.length > 0) {
