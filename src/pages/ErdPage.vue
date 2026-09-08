@@ -280,55 +280,59 @@
 
         <!-- Floating toolbar — zoom / view / tool controls, moved out of the old top navbar -->
         <div
-          class="absolute bottom-12 left-4 z-20 flex items-center gap-1 px-2 py-1.5 rounded-xl border shadow-lg backdrop-blur-md"
+          class="absolute bottom-12 left-4 z-20 flex items-center px-2 py-1.5 rounded-xl border shadow-lg backdrop-blur-md transition-[padding] duration-300 ease-[cubic-bezier(.34,1.3,.64,1)]"
           :class="isDark ? 'bg-zinc-900/80 border-white/10' : 'bg-white/90 border-gray-200'"
         >
-          <template v-if="!toolsMinimized">
-          <AppTooltip text="Perkecil" position="top">
-            <button @click="zoomBy(1 / 1.15)" class="p-1.5 rounded-lg" :class="btnClass">
-              <ZoomOutIcon :size="14" />
-            </button>
-          </AppTooltip>
-
-          <button @click="scale = 1" class="text-xs w-12 text-center tabular-nums" :class="isDark ? 'text-zinc-300' : 'text-slate-600'">
-            {{ Math.round(scale * 100) }}%
-          </button>
-
-          <AppTooltip text="Perbesar" position="top">
-            <button @click="zoomBy(1.15)" class="p-1.5 rounded-lg" :class="btnClass">
-              <ZoomInIcon :size="14" />
-            </button>
-          </AppTooltip>
-
-          <span class="w-px h-5 mx-1" :class="isDark ? 'bg-white/10' : 'bg-black/10'" />
-
-          <AppTooltip text="Sesuaikan ke layar" position="top">
-            <button @click="fitToScreen" class="p-1.5 rounded-lg" :class="btnClass">
-              <MaximizeIcon :size="14" />
-            </button>
-          </AppTooltip>
-
-          <AppTooltip text="Reset tampilan" position="top">
-            <button @click="resetView" class="p-1.5 rounded-lg" :class="btnClass">
-              <RotateCcwIcon :size="14" />
-            </button>
-          </AppTooltip>
-
-          <span class="w-px h-5 mx-1" :class="isDark ? 'bg-white/10' : 'bg-black/10'" />
-
-          <AppTooltip text="Tampilkan grid" position="top">
-            <button @click="showGrid = !showGrid" class="p-1.5 rounded-lg" :class="showGrid ? btnOnClass : btnClass">
-              <GridIcon :size="14" />
-            </button>
-          </AppTooltip>
-          </template>
-
           <AppTooltip :text="toolsMinimized ? 'Tampilkan tools' : 'Minimize tools'" position="top">
-            <button @click="toolsMinimized = !toolsMinimized" class="p-1.5 rounded-lg" :class="btnClass">
-              <ChevronUpIcon v-if="toolsMinimized" :size="14" />
-              <ChevronDownIcon v-else :size="14" />
+            <button @click="toolsMinimized = !toolsMinimized" class="p-1.5 rounded-lg shrink-0" :class="btnClass">
+              <ChevronUpIcon :size="14" class="transition-transform duration-300 ease-[cubic-bezier(.34,1.3,.64,1)]" :class="toolsMinimized ? 'rotate-180' : ''" />
             </button>
           </AppTooltip>
+
+          <div
+            class="flex items-center gap-1 overflow-hidden transition-[max-width,opacity,margin] duration-300 ease-[cubic-bezier(.34,1.3,.64,1)]"
+            :class="toolsMinimized ? 'max-w-0 opacity-0 ml-0' : 'max-w-[320px] opacity-100 ml-1'"
+          >
+            <span class="w-px h-5 mx-1 shrink-0" :class="isDark ? 'bg-white/10' : 'bg-black/10'" />
+
+            <AppTooltip text="Perkecil" position="top">
+              <button @click="zoomBy(1 / 1.15)" class="p-1.5 rounded-lg shrink-0" :class="btnClass">
+                <ZoomOutIcon :size="14" />
+              </button>
+            </AppTooltip>
+
+            <button @click="scale = 1" class="text-xs w-12 text-center tabular-nums shrink-0" :class="isDark ? 'text-zinc-300' : 'text-slate-600'">
+              {{ Math.round(scale * 100) }}%
+            </button>
+
+            <AppTooltip text="Perbesar" position="top">
+              <button @click="zoomBy(1.15)" class="p-1.5 rounded-lg shrink-0" :class="btnClass">
+                <ZoomInIcon :size="14" />
+              </button>
+            </AppTooltip>
+
+            <span class="w-px h-5 mx-1 shrink-0" :class="isDark ? 'bg-white/10' : 'bg-black/10'" />
+
+            <AppTooltip text="Sesuaikan ke layar" position="top">
+              <button @click="fitToScreen" class="p-1.5 rounded-lg shrink-0" :class="btnClass">
+                <MaximizeIcon :size="14" />
+              </button>
+            </AppTooltip>
+
+            <AppTooltip text="Reset tampilan" position="top">
+              <button @click="resetView" class="p-1.5 rounded-lg shrink-0" :class="btnClass">
+                <RotateCcwIcon :size="14" />
+              </button>
+            </AppTooltip>
+
+            <span class="w-px h-5 mx-1 shrink-0" :class="isDark ? 'bg-white/10' : 'bg-black/10'" />
+
+            <AppTooltip text="Tampilkan grid" position="top">
+              <button @click="showGrid = !showGrid" class="p-1.5 rounded-lg shrink-0" :class="showGrid ? btnOnClass : btnClass">
+                <GridIcon :size="14" />
+              </button>
+            </AppTooltip>
+          </div>
         </div>
 
         <!-- Code sidebar — reconstructed entity code, slides in from the right
