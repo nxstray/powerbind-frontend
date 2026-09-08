@@ -901,10 +901,9 @@ const dataPanel = ref({ open: false, loading: false, error: null, table: '', pag
 
 function toggleDataPanel() {
   dataPanel.value.open = !dataPanel.value.open
-  if (dataPanel.value.open) {
-    if (!dataPanel.value.table) {
-      dataPanel.value.table = focusedTable.value || schema.tables[0]?.name || ''
-    }
+  // Only refetch if a table was already picked in a previous open — the panel
+  // should open showing the "Pilih tabel" placeholder until the user chooses.
+  if (dataPanel.value.open && dataPanel.value.table) {
     fetchDataRows()
   }
 }
