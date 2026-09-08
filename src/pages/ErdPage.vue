@@ -146,11 +146,18 @@
                    the highlight animation in dbdiagram.io. Clicking a table
                    (focus neighbours) does not trigger this animation, only the
                    static highlight. -->
-              <circle v-if="p.active && isHoverDriven" r="3.5" :fill="lineFocusColor">
-                <animateMotion dur="1.1s" repeatCount="indefinite" rotate="auto">
-                  <mpath :href="'#' + p.id" />
-                </animateMotion>
-              </circle>
+              <template v-if="p.active && isHoverDriven">
+                <circle v-for="n in PIPELINE_NODE_COUNT" :key="n" r="3.5" :fill="lineFocusColor">
+                  <animateMotion
+                    :dur="PIPELINE_DUR"
+                    :begin="(-(n - 1) * PIPELINE_DUR_S) / PIPELINE_NODE_COUNT + 's'"
+                    repeatCount="indefinite"
+                    rotate="auto"
+                  >
+                    <mpath :href="'#' + p.id" />
+                  </animateMotion>
+                </circle>
+              </template>
             </g>
           </svg>
 
@@ -229,12 +236,15 @@
         <div
           v-if="explain.open"
           ref="explainPanelRef"
-          class="absolute z-30 w-96 max-w-[calc(100%-2rem)] rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
+          class="absolute z-30 max-w-[calc(100%-2rem)] rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
           :class="[
             isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/95 border-gray-200',
             explainPos ? '' : 'top-4 right-4',
           ]"
-          :style="explainPos ? { left: explainPos.x + 'px', top: explainPos.y + 'px' } : null"
+          :style="{
+            width: explainSize.width + 'px',
+            ...(explainPos ? { left: explainPos.x + 'px', top: explainPos.y + 'px' } : {}),
+          }"
         >
           <div
             class="flex items-center gap-2 px-3 py-2 border-b cursor-move select-none"
@@ -263,7 +273,8 @@
           </div>
 
           <div
-            class="px-3 py-2.5 text-[12px] leading-relaxed overflow-y-auto custom-scroll max-h-64"
+            class="px-3 py-2.5 text-[12px] leading-relaxed overflow-y-auto custom-scroll"
+            :style="{ height: explainSize.height + 'px' }"
             :class="isDark ? 'text-zinc-300' : 'text-slate-700'"
           >
             <p v-if="explain.error">
@@ -275,6 +286,18 @@
             <p v-else class="text-justify hyphens-auto wrap-break" lang="id">
               <span v-if="explain.loading && !explainText" class="opacity-60">Gemono sedang menyusun penjelasan...</span><span v-html="formattedExplain"></span><span v-if="explain.loading" class="animate-pulse">▍</span>
             </p>
+          </div>
+
+          <!-- Resize handle — drag from the bottom-right corner to adjust
+               both the panel's width and the text area's height at once. -->
+          <div
+            class="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize touch-none"
+            @mousedown.stop="onExplainResizeStart"
+            title="Tarik untuk mengubah ukuran"
+          >
+            <svg viewBox="0 0 16 16" class="h-full w-full opacity-40 hover:opacity-80 transition-opacity" :class="isDark ? 'text-zinc-400' : 'text-slate-400'">
+              <path d="M13 3 L3 13 M13 8 L8 13 M13 13 L13 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" />
+            </svg>
           </div>
         </div>
 
@@ -377,7 +400,11 @@
 
       <!-- Bottom data panel — the folder tab sticks to the bottom edge; opening
            it slides the panel up and pushes the canvas content (not an overlay) -->
-      <div class="relative shrink-0 transition-[height] duration-300 ease-out" :class="dataPanel.open ? 'h-80' : 'h-0'">
+      <div
+        class="relative shrink-0"
+        :class="dataPanelResizing ? '' : 'transition-[height] duration-300 ease-out'"
+        :style="{ height: dataPanel.open ? dataPanelHeight + 'px' : '0px' }"
+      >
         <button
           @click="toggleDataPanel"
           class="absolute bottom-full right-4 z-20 flex h-8 items-center gap-1.5 rounded-t-lg px-4 text-xs font-semibold shadow-lg transition-colors cursor-pointer"
@@ -389,6 +416,22 @@
           <DatabaseIcon :size="13" />
           Data output
         </button>
+
+        <!-- Drag handle to resize the panel's height — hover the top edge and
+             drag up/down. Only shown while the panel is open. -->
+        <div
+          v-if="dataPanel.open"
+          class="absolute -top-1 left-0 right-0 h-2 z-20 cursor-ns-resize group"
+          @mousedown.stop="onDataPanelResizeStart"
+          title="Tarik untuk mengubah tinggi panel"
+        >
+          <div
+            class="mx-auto mt-0.5 h-1 w-10 rounded-full transition-colors"
+            :class="[
+              dataPanelResizing ? 'bg-sky-400' : (isDark ? 'bg-zinc-600 group-hover:bg-sky-400' : 'bg-gray-300 group-hover:bg-sky-500'),
+            ]"
+          />
+        </div>
 
         <div class="h-full overflow-hidden border-t" :class="isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200'">
           <div class="flex h-full flex-col">
@@ -739,6 +782,13 @@ function isNeighbor(name) {
 const hoveredColumn = ref(null) // { table, column }
 const hoveredRel = ref(null) // relation key string
 
+// Traveling packet animation tuning — several nodes chase each other along
+// the cable, evenly spaced, so the flow reads as a continuous "infinity"
+// stream rather than a single dot. Slower than before per feedback.
+const PIPELINE_NODE_COUNT = 4
+const PIPELINE_DUR_S = 3.2
+const PIPELINE_DUR = PIPELINE_DUR_S + 's'
+
 function relKey(r) {
   return `${r.from}.${r.fromColumn}->${r.to}.${r.toColumn}`
 }
@@ -814,6 +864,30 @@ let explainController = null // AbortController for the in-flight stream
 const explainPanelRef = ref(null)
 const explainPos = ref(null)
 let explainDrag = null
+
+// ---- draggable panel resize (bottom-right corner handle) --------------------
+const EXPLAIN_MIN_W = 288  // ~ old w-72
+const EXPLAIN_MAX_W = 720
+const EXPLAIN_MIN_H = 96
+const EXPLAIN_MAX_H = 560
+const explainSize = ref({ width: 384, height: 256 }) // matches old w-96 / max-h-64
+let explainResize = null
+
+function onExplainResizeStart(e) {
+  if (e.button !== 0) return
+  // Dragging the corner while the panel is still pinned top-right (never
+  // manually moved) would visually grow it off-screen to the left as width
+  // increases from a right-anchored position, so anchor it to an explicit
+  // left/top first — same trick used when a drag starts from the header.
+  const vp = viewportRef.value
+  const el = explainPanelRef.value
+  if (vp && el && !explainPos.value) {
+    const rect = el.getBoundingClientRect()
+    const vpRect = vp.getBoundingClientRect()
+    explainPos.value = { x: rect.left - vpRect.left, y: rect.top - vpRect.top }
+  }
+  explainResize = { startX: e.clientX, startY: e.clientY, origW: explainSize.value.width, origH: explainSize.value.height }
+}
 
 function explainKind(col) {
   if (!col) return ''
@@ -899,6 +973,19 @@ async function openCodePanel(tableName) {
 // up from the bottom edge and pushes the canvas content instead of overlaying it
 const dataPanel = ref({ open: false, loading: false, error: null, table: '', page: 0, size: 50, total: 0, columns: [], rows: [] })
 
+// ---- data panel resize (drag the top edge up/down) --------------------------
+const DATA_PANEL_MIN_H = 160
+const DATA_PANEL_MAX_H = 720
+const dataPanelHeight = ref(320) // matches the old fixed h-80
+const dataPanelResizing = ref(false)
+let dataPanelResizeStart = null
+
+function onDataPanelResizeStart(e) {
+  if (e.button !== 0) return
+  dataPanelResizing.value = true
+  dataPanelResizeStart = { startY: e.clientY, origH: dataPanelHeight.value }
+}
+
 function toggleDataPanel() {
   dataPanel.value.open = !dataPanel.value.open
   // Only refetch if a table was already picked in a previous open — the panel
@@ -973,7 +1060,17 @@ function onExplainDragStart(e) {
 }
 
 function onMove(e) {
-  if (explainDrag) {
+  if (explainResize) {
+    explainSize.value = {
+      width: Math.min(EXPLAIN_MAX_W, Math.max(EXPLAIN_MIN_W, explainResize.origW + (e.clientX - explainResize.startX))),
+      height: Math.min(EXPLAIN_MAX_H, Math.max(EXPLAIN_MIN_H, explainResize.origH + (e.clientY - explainResize.startY))),
+    }
+  } else if (dataPanelResizeStart) {
+    // dragging up (negative deltaY) grows the panel, since it's pinned to
+    // the bottom edge — same feel as resizing a bottom dock in an IDE.
+    const delta = dataPanelResizeStart.startY - e.clientY
+    dataPanelHeight.value = Math.min(DATA_PANEL_MAX_H, Math.max(DATA_PANEL_MIN_H, dataPanelResizeStart.origH + delta))
+  } else if (explainDrag) {
     const vp = viewportRef.value
     const el = explainPanelRef.value
     if (vp && el) {
@@ -992,6 +1089,9 @@ function onMove(e) {
   }
 }
 function onUp() {
+  explainResize = null
+  dataPanelResizeStart = null
+  dataPanelResizing.value = false
   explainDrag = null
   const wasDragging = !!dragState
   panState = null
