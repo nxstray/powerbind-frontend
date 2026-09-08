@@ -5,7 +5,6 @@
 <script setup>
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { marked } from 'marked'
-import mermaid from 'mermaid'
 import DOMPurify from 'dompurify'
 
 const props = defineProps({
@@ -18,12 +17,31 @@ const containerEl = ref(null)
 // Configure marked for GFM tables + line breaks
 marked.setOptions({ gfm: true, breaks: true })
 
-// suppressErrorRendering stops Mermaid from injecting its own "bomb" error SVG
-// directly into document.body when a diagram fails to parse — we already show
-// our own inline error message in the catch block below.
-mermaid.initialize({ startOnLoad: false, theme: 'neutral', suppressErrorRendering: true })
-
 let mermaidCounter = 0
+let mermaidPromise = null
+
+// Lazy-load mermaid only when a ```mermaid block actually appears. The library
+// is huge (dragging in marked/dompurify-adjacent weight would bloat the agent
+// chunk), so we fetch it on first diagram and cache the promise afterwards.
+function loadMermaid() {
+  if (!mermaidPromise) {
+    mermaidPromise = import('mermaid')
+      .then((m) => {
+        const mermaid = m.default
+        // suppressErrorRendering stops Mermaid from injecting its own "bomb" error SVG
+        // directly into document.body when a diagram fails to parse — we already show
+        // our own inline error message in the catch block below.
+        mermaid.initialize({ startOnLoad: false, theme: 'neutral', suppressErrorRendering: true })
+        return mermaid
+      })
+      .catch((err) => {
+        // Reset so a transient network failure can be retried on the next render.
+        mermaidPromise = null
+        throw err
+      })
+  }
+  return mermaidPromise
+}
 
 function processContent(text) {
   if (!text) return { html: '', mermaidBlocks: [] }
@@ -44,13 +62,23 @@ function processContent(text) {
 
 async function renderMermaidBlocks(blocks) {
   await nextTick()
+  let mermaid
+  try {
+    mermaid = await loadMermaid()
+  } catch {
+    for (const block of blocks) {
+      const el = document.getElementById(block.id)
+      if (el) el.innerHTML = `<p class="text-xs text-red-400">Diagram error: unable to render</p>`
+    }
+    return
+  }
   for (const block of blocks) {
     const el = document.getElementById(block.id)
     if (!el) continue
     try {
       const { svg } = await mermaid.render(`${block.id}-svg`, block.code)
       el.innerHTML = DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } })
-    } catch (e) {
+    } catch {
       el.innerHTML = `<p class="text-xs text-red-400">Diagram error: unable to render</p>`
     }
   }
