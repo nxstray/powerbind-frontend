@@ -79,10 +79,14 @@
           v-for="lvl in LEVEL_KEYS"
           :key="lvl"
           @click="toggleLevel(lvl)"
-          class="text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
-          :class="activeLevels.has(lvl) ? [chipActiveClass, LEVEL_TEXT[lvl]] : chipInactiveClass"
+          class="flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[11px] font-semibold tracking-wider transition-colors"
+          :class="chipClass(lvl)"
         >
-          {{ lvl }}
+          <span
+            class="h-2 w-2 rounded-full"
+            :style="{ background: DOT_COLOR[lvl], opacity: activeLevels.has(lvl) ? 1 : 0.25 }"
+          />
+          <span :class="activeLevels.has(lvl) ? '' : 'line-through decoration-1 opacity-70'">{{ lvl }}</span>
         </button>
 
         <!-- Range dropdown — same trigger/panel/chevron animation pattern as the Power Usage chart on the dashboard -->
@@ -227,23 +231,30 @@ async function fetchWeather() {
   }
 }
 
-// ---- level filter chips — one neutral chip style for every level; only the label
-// text is tinted, so the row doesn't read as "colorful" at a glance --------------
+// ---- level filter toggles — Grafana/Datadog-style legend chips: no box, just a
+// dot + mono label that blend with any weather theme. Dot colors are the exact
+// colors the log lines use (LogPanel's border-l bars / level text), so what you
+// toggle is exactly what you see. Active = solid dot + colored label (contrast
+// adapts per theme); hidden = faded dot + struck-through dim label, so the
+// filtered-out state is obvious at a glance. ----------------------------------
 const LEVEL_KEYS = ['ERROR', 'WARN', 'INFO', 'DEBUG']
-// Same classes LogPanel uses to color ERROR/WARN/INFO/DEBUG inside the log lines,
-// so a badge's color always matches what you see once you look at the logs.
-const LEVEL_TEXT = {
-  ERROR: 'text-red-400',
-  WARN: 'text-amber-400',
-  INFO: 'text-sky-300',
-  DEBUG: 'text-zinc-400',
+const DOT_COLOR = {
+  ERROR: '#ef4444', // red-500
+  WARN: '#f59e0b', // amber-500
+  INFO: '#0ea5e9', // sky-500
+  DEBUG: '#a1a1aa', // zinc-400
 }
-const chipActiveClass = computed(() =>
-  isDark.value ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-200',
-)
-const chipInactiveClass = computed(() =>
-  isDark.value ? 'bg-zinc-800/40 border-zinc-800 text-zinc-600' : 'bg-gray-50 border-gray-100 text-gray-300',
-)
+function chipClass(lvl) {
+  if (!activeLevels.has(lvl)) {
+    return isDark.value ? 'text-zinc-500 hover:bg-white/5' : 'text-gray-400 hover:bg-black/5'
+  }
+  return {
+    ERROR: isDark.value ? 'text-red-400 hover:bg-white/10' : 'text-red-600 hover:bg-black/5',
+    WARN: isDark.value ? 'text-amber-400 hover:bg-white/10' : 'text-amber-600 hover:bg-black/5',
+    INFO: isDark.value ? 'text-sky-300 hover:bg-white/10' : 'text-sky-600 hover:bg-black/5',
+    DEBUG: isDark.value ? 'text-zinc-400 hover:bg-white/10' : 'text-zinc-500 hover:bg-black/5',
+  }[lvl]
+}
 const activeLevels = reactive(new Set(LEVEL_KEYS))
 function toggleLevel(key) {
   if (activeLevels.has(key)) {
