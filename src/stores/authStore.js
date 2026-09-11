@@ -36,11 +36,16 @@ export const useAuthStore = defineStore('auth', () => {
     mustChangePassword.value = false
   }
 
+  // Local state is ALWAYS cleaned up, even if the backend call fails — the
+  // user must not stay "logged in" locally just because the network is down.
   async function logout() {
     try {
       if (refreshToken.value) {
         await authService.logout(refreshToken.value)
       }
+    } catch {
+      // Intentionally swallowed: backend logout failure (expired token,
+      // network down, ...) must not block local cleanup below.
     } finally {
       accessToken.value = null
       refreshToken.value = null
