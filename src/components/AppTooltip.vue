@@ -1,9 +1,9 @@
 <template>
-  <div class="relative inline-flex group/tooltip">
+  <div class="relative inline-flex group/tooltip" :data-tooltip="text">
     <slot />
     <span
       v-if="text"
-      class="pointer-events-none absolute z-50 whitespace-nowrap rounded bg-gray-700 px-2 py-1 text-[9px] font-medium text-white opacity-0 scale-95 shadow-lg transition-all duration-200 ease-out group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100"
+      class="pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-gray-700 px-2.5 py-1.5 text-[11px] font-medium text-white opacity-0 scale-95 shadow-lg transition-all duration-200 ease-out group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100"
       :class="positionClass"
     >
       {{ text }}
