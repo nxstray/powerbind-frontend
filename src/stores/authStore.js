@@ -40,8 +40,13 @@ export const useAuthStore = defineStore('auth', () => {
   // user must not stay "logged in" locally just because the network is down.
   async function logout() {
     try {
-      if (refreshToken.value) {
-        await authService.logout(refreshToken.value)
+      // localStorage = source of truth setelah silent refresh di api.js:
+      // interceptor me-rotate kedua token langsung di localStorage, sedangkan
+      // ref di sini bisa berisi refresh token lama yang sudah di-revoke.
+      const currentRefreshToken =
+        localStorage.getItem('refreshToken') || refreshToken.value
+      if (currentRefreshToken) {
+        await authService.logout(currentRefreshToken)
       }
     } catch {
       // Intentionally swallowed: backend logout failure (expired token,

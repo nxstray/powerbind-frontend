@@ -12,6 +12,13 @@ const authService = {
     return res.data.data
   },
 
+  // Exchange the (rotating) refresh token for a new token pair.
+  // Response data: { accessToken, refreshToken, mustChangePassword }
+  async refresh(refreshToken) {
+    const res = await api.post('/api/auth/refresh', { refreshToken })
+    return res.data.data
+  },
+
   async logout(refreshToken) {
     await api.post('/api/auth/logout', { refreshToken })
   },
