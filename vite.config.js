@@ -20,4 +20,10 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+  // Vitest config — read automatically because Vitest uses the same
+  // vite.config.js (no separate config file needed)
+  test: {
+    environment: 'jsdom',
+    globals: true,
+  },
 })
