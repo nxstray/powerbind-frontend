@@ -227,6 +227,7 @@
         <div
           v-if="explain.open"
           ref="explainPanelRef"
+          data-explain-panel
           class="absolute z-30 rounded-xl border shadow-lg backdrop-blur-md overflow-hidden"
           :class="[
             isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/95 border-gray-200',

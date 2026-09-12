@@ -81,7 +81,7 @@
 
       <div
         v-if="hoverX !== null"
-        class="absolute z-10 pointer-events-none rounded-lg border px-2.5 py-1.5 text-[10.5px] shadow-lg min-w-"
+        class="absolute z-10 pointer-events-none rounded-md border px-2.5 py-1.5 text-[11px] shadow-lg min-w-"
         :class="isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200' : 'bg-white border-gray-200 text-gray-700'"
         :style="tooltipStyle"
       >

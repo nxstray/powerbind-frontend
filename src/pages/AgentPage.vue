@@ -80,7 +80,6 @@
             @click="startEditTitle"
             class="inline-flex items-center max-w-35 px-2.5 py-1 rounded-lg border border-transparent text-xs font-medium truncate cursor-text transition-all duration-300 ease-out hover:max-w-105 hover:opacity-80"
             :style="{ color: accentColor }"
-            title="Klik untuk ganti nama percakapan"
           >
             <span class="truncate">{{ activeConversationTitle }}</span>
           </div>
@@ -207,8 +206,8 @@
             <!-- Agent message — no sparkles avatar / gradient background -->
             <div v-else class="self-start max-w-full md:max-w-[85%] w-full ml-2 md:ml-4">
               <MarkdownRenderer :content="msg.content" :class="isDark ? 'text-gray-200' : 'text-gray-700'" class="text-sm md:text-base" />
-              <!-- Timestamp now follows the theme so it stays legible in dark mode -->
-              <p class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">
+              <!-- Timestamp only appears once the answer has fully streamed in -->
+              <p v-if="msg.id !== streamingMsgId" class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">
                 {{ msg.time }}<span v-if="msg.rawTime" class="ml-1">· {{ relativeTime(msg.rawTime) }}</span>
               </p>
             </div>
@@ -325,6 +324,9 @@ const sidebarOpen = ref(false)
 const messages = ref([])
 const input = ref('')
 const streaming = ref(false)
+// The agent message currently being streamed — its timestamp stays hidden
+// until the answer completes, so "03.02 · baru saja" only appears once done.
+const streamingMsgId = ref(null)
 const messagesEl = ref(null)
 const isRecording = ref(false)
 let mediaRecorder = null
@@ -716,6 +718,7 @@ async function send() {
 
   const agentMsgId = Date.now() + 1
   messages.value.push({ id: agentMsgId, role: 'agent', content: '', time: timeNow(), rawTime: Date.now() })
+  streamingMsgId.value = agentMsgId
 
   // Bring the start of the agent's reply into view once, then let it
   // stream in place — no more auto-scrolling on every chunk, so the page
@@ -729,6 +732,7 @@ async function send() {
   const wasNewConversation = !activeConversationId.value
   const onDone = async () => {
     streaming.value = false
+    streamingMsgId.value = null
     await loadConversationList()
     // if this was the first message of a new thread, adopt the newest
     // conversation as active so the next message continues the same thread
@@ -743,6 +747,7 @@ async function send() {
     const msg = messages.value.find((m) => m.id === agentMsgId)
     if (msg) msg.content = 'Maaf, terjadi kesalahan saat menghubungi AI. Coba lagi.'
     streaming.value = false
+    streamingMsgId.value = null
     console.error('[Agent] Stream error:', err)
   }
 

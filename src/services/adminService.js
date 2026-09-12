@@ -16,6 +16,10 @@ function extractSseEvents(buffer) {
     const content = rawEvent
       .split('\n')
       .filter((l) => l.startsWith('data:'))
+      // KONTRAK BACKEND KITA: Spring SSE writer (AdminController) menulis
+      // 'data:' langsung diikuti konten — TANPA spasi delimiter. Spasi setelah
+      // 'data:' adalah bagian dari token AI itu sendiri (word-boundary
+      // tokenizer) — JANGAN dibuang, kalau tidak kata-kata menyatu.
       .map((l) => l.slice(5))
       .join('\n')
 

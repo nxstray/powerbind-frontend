@@ -20,14 +20,15 @@
     >
       <!-- Attach file button — sized to match the mic/send buttons on desktop
            (md:w-10 md:h-10) so it sits level with them instead of lower -->
-      <button
-        @click="fileInputEl?.click()"
-        class="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition shrink-0"
-        :class="isDark ? 'text-gray-300 hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100'"
-        title="Lampirkan gambar atau dokumen"
-      >
-        <PaperclipIcon :size="16" />
-      </button>
+      <AppTooltip text="Lampirkan gambar atau dokumen" position="top">
+        <button
+          @click="fileInputEl?.click()"
+          class="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition shrink-0"
+          :class="isDark ? 'text-gray-300 hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100'"
+        >
+          <PaperclipIcon :size="16" />
+        </button>
+      </AppTooltip>
       <input
         ref="fileInputEl"
         type="file"
@@ -48,16 +49,17 @@
       />
 
       <!-- Voice input — circle on hover, consistent with the attach button -->
-      <button
-        @click="$emit('toggle-voice')"
-        :class="[
-          'w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition shrink-0 ml-1',
-          isRecording ? 'bg-red-500 text-white animate-pulse' : (isDark ? 'text-gray-300 hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100')
-        ]"
-        title="Voice input"
-      >
-        <MicIcon :size="16" />
-      </button>
+      <AppTooltip text="Voice input" position="top">
+        <button
+          @click="$emit('toggle-voice')"
+          :class="[
+            'w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition shrink-0 ml-1',
+            isRecording ? 'bg-red-500 text-white animate-pulse' : (isDark ? 'text-gray-300 hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100')
+          ]"
+        >
+          <MicIcon :size="16" />
+        </button>
+      </AppTooltip>
 
       <!-- Send — no permanent circle, only shows on hover -->
       <button
@@ -78,6 +80,7 @@
 
 <script setup>
 import { ref, nextTick, watch } from 'vue'
+import AppTooltip from '@/components/AppTooltip.vue'
 import SendIcon from '@/components/icons/SendIcon.vue'
 import MicIcon from '@/components/icons/MicIcon.vue'
 import PaperclipIcon from '@/components/icons/PaperClipIcon.vue'

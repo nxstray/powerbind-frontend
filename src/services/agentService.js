@@ -11,7 +11,7 @@ function getHeaders() {
 
 function authOnlyHeaders() {
   const token = localStorage.getItem('accessToken')
-  return { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 // parse one buffered chunk of raw SSE text into complete events, returning
@@ -29,6 +29,11 @@ function extractSseEvents(buffer) {
     const content = rawEvent
       .split('\n')
       .filter((l) => l.startsWith('data:'))
+      // KONTRAK BACKEND KITA: Spring SSE writer (GroqService/AdminController)
+      // menulis 'data:' langsung diikuti konten — TANPA spasi delimiter.
+      // Spasi setelah 'data:' yang terlihat adalah bagian dari token AI itu
+      // sendiri (word-boundary tokenizer, mis. " saya", " adalah") — JANGAN
+      // dibuang, kalau tidak kata-kata menyatu ("Sayaadalah...").
       .map((l) => l.slice(5))
       .join('\n')
 
@@ -66,6 +71,24 @@ const agentService = {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ message, history, conversationId }),
+      })
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+      await consumeSseStream(response, onChunk)
+      onDone()
+    } catch (err) {
+      onError(err)
+    }
+  },
+
+  // Ephemeral one-shot Q&A (Metrics overlay) — backend does NOT persist this
+  async streamQuickAsk(message, onChunk, onDone, onError) {
+    try {
+      const response = await fetch(`${BASE_URL}/api/agent/quick-ask`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ message }),
       })
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`)

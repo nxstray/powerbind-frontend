@@ -6,19 +6,24 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // factory vi.mock (module runner Vitest 5 bisa mengevaluasi factory lebih dari
 // sekali — tanpa ini, salinan axios di test dan di api.js bisa berbeda).
 const { instance, axiosMock } = vi.hoisted(() => {
-  const mockedInstance = {
+  // Instance harus CALLABLE: interceptor refresh di api.js mengulang request
+  // asli lewat api(config) → memanggil instance(config) langsung.
+  const mockedInstance = Object.assign(vi.fn(), {
     interceptors: {
       request: { use: vi.fn() },
       response: { use: vi.fn() },
     },
     post: vi.fn(),
-  }
+  })
   return { instance: mockedInstance, axiosMock: { create: vi.fn(() => mockedInstance) } }
 })
 
 vi.mock('axios', () => ({ default: axiosMock }))
 
-import api from '@/utils/api'
+// Side-effect import: mengeksekusi modul api.js agar interceptor-nya
+// terdaftar — binding `api` sendiri tidak dipakai test (handler diintip
+// lewat mock instance).
+import '@/utils/api'
 
 // Ambil handler interceptor yang terdaftar saat modul api.js dieksekusi.
 const requestHandler = instance.interceptors.request.use.mock.calls[0][0]
@@ -62,6 +67,10 @@ describe('response interceptor api.js', () => {
     )
     instance.post.mockReset()
     instance.post.mockResolvedValue({})
+    instance.mockReset()
+    instance.mockResolvedValue({ data: { data: 'ok' } })
+    // Module-level state refreshPromise di api.js harus bersih antar test —
+    // cukup dengan mockReset di atas karena promise selesai di setiap test.
   })
 
   afterEach(() => {
@@ -117,9 +126,52 @@ describe('response interceptor api.js', () => {
     expect(instance.post).not.toHaveBeenCalled()
   })
 
-  it('kalau status 401: hapus kedua token dari localStorage dan redirect ke /login', async () => {
+  it('401 + refresh sukses: simpan token pair BARU lalu ulangi request asli tanpa redirect', async () => {
+    localStorage.setItem('accessToken', 'at-lama')
+    localStorage.setItem('refreshToken', 'rt-lama')
+    // instance.post: /api/logs (error log) → {}; /api/auth/refresh → token pair baru
+    instance.post.mockImplementation((url) => {
+      if (url === '/api/auth/refresh') {
+        return Promise.resolve({
+          data: { data: { accessToken: 'at-baru', refreshToken: 'rt-baru' } },
+        })
+      }
+      return Promise.resolve({})
+    })
+    instance.mockResolvedValue({ data: { data: 'ok' } }) // jawaban retry request asli
+
+    const error = {
+      config: { url: '/api/rooms', headers: {} },
+      response: { status: 401 },
+      message: 'Unauthorized',
+    }
+
+    await responseErrorHandler(error)
+
+    // Refresh dipanggil dengan refreshToken lama
+    expect(instance.post).toHaveBeenCalledWith('/api/auth/refresh', {
+      refreshToken: 'rt-lama',
+    })
+    // ROTATING: KEDUA token baru tersimpan
+    expect(localStorage.getItem('accessToken')).toBe('at-baru')
+    expect(localStorage.getItem('refreshToken')).toBe('rt-baru')
+    // Request asli diulang dengan token baru, tanpa redirect
+    expect(instance).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/api/rooms' }),
+    )
+    expect(error.config.headers.Authorization).toBe('Bearer at-baru')
+    expect(window.location.href).toBe('')
+  })
+
+  it('401 + refresh gagal (refresh token expired): bersihkan token lalu redirect', async () => {
     localStorage.setItem('accessToken', 'at')
-    localStorage.setItem('refreshToken', 'rt')
+    localStorage.setItem('refreshToken', 'rt-mati')
+    instance.post.mockImplementation((url) => {
+      if (url === '/api/auth/refresh') {
+        return Promise.reject({ response: { status: 401 } })
+      }
+      return Promise.resolve({})
+    })
 
     const error = {
       config: { url: '/api/rooms' },
@@ -134,17 +186,98 @@ describe('response interceptor api.js', () => {
     expect(window.location.href).toBe('/login')
   })
 
-  it('kalau status 401 pada endpoint log: tetap redirect tapi tidak log ulang', async () => {
+  it('401 tanpa refreshToken di localStorage: langsung clear + redirect tanpa refresh', async () => {
+    localStorage.setItem('accessToken', 'at')
+
     const error = {
-      config: { url: '/api/logs' },
+      config: { url: '/api/rooms' },
       response: { status: 401 },
       message: 'Unauthorized',
     }
 
     await expect(responseErrorHandler(error)).rejects.toBe(error)
 
-    expect(instance.post).not.toHaveBeenCalled()
+    const refreshCalls = instance.post.mock.calls.filter(
+      ([url]) => url === '/api/auth/refresh',
+    )
+    expect(refreshCalls).toHaveLength(0)
+    expect(localStorage.getItem('accessToken')).toBeNull()
     expect(window.location.href).toBe('/login')
+  })
+
+  it('401 di /api/auth/login (password salah): tidak refresh, langsung clear + redirect', async () => {
+    localStorage.setItem('accessToken', 'at')
+    localStorage.setItem('refreshToken', 'rt')
+
+    const error = {
+      config: { url: '/api/auth/login' },
+      response: { status: 401 },
+      message: 'Bad credentials',
+    }
+
+    await expect(responseErrorHandler(error)).rejects.toBe(error)
+
+    const refreshCalls = instance.post.mock.calls.filter(
+      ([url]) => url === '/api/auth/refresh',
+    )
+    expect(refreshCalls).toHaveLength(0)
+    expect(localStorage.getItem('refreshToken')).toBeNull()
+    expect(window.location.href).toBe('/login')
+  })
+
+  it('401 di /api/auth/refresh sendiri: tidak refresh ulang (anti infinite loop)', async () => {
+    localStorage.setItem('refreshToken', 'rt')
+
+    const error = {
+      config: { url: '/api/auth/refresh' },
+      response: { status: 401 },
+      message: 'Invalid refresh token',
+    }
+
+    await expect(responseErrorHandler(error)).rejects.toBe(error)
+
+    const refreshCalls = instance.post.mock.calls.filter(
+      ([url]) => url === '/api/auth/refresh',
+    )
+    expect(refreshCalls).toHaveLength(0)
+    expect(localStorage.getItem('refreshToken')).toBeNull()
+    expect(window.location.href).toBe('/login')
+  })
+
+  it('dua 401 bersamaan: refresh hanya dipanggil SEKALI (single-flight), keduanya retry', async () => {
+    localStorage.setItem('accessToken', 'at-lama')
+    localStorage.setItem('refreshToken', 'rt-lama')
+    instance.post.mockImplementation((url) => {
+      if (url === '/api/auth/refresh') {
+        return Promise.resolve({
+          data: { data: { accessToken: 'at-baru', refreshToken: 'rt-baru' } },
+        })
+      }
+      return Promise.resolve({})
+    })
+    instance.mockResolvedValue({ data: { data: 'ok' } })
+
+    const e1 = {
+      config: { url: '/api/rooms', headers: {} },
+      response: { status: 401 },
+      message: 'Unauthorized',
+    }
+    const e2 = {
+      config: { url: '/api/dashboard/summary', headers: {} },
+      response: { status: 401 },
+      message: 'Unauthorized',
+    }
+
+    await Promise.allSettled([responseErrorHandler(e1), responseErrorHandler(e2)])
+
+    const refreshCalls = instance.post.mock.calls.filter(
+      ([url]) => url === '/api/auth/refresh',
+    )
+    expect(refreshCalls).toHaveLength(1)
+    // Kedua request asli diulang dengan token baru
+    expect(e1.config.headers.Authorization).toBe('Bearer at-baru')
+    expect(e2.config.headers.Authorization).toBe('Bearer at-baru')
+    expect(localStorage.getItem('refreshToken')).toBe('rt-baru')
   })
 
   it('kalau status bukan 401: token tidak disentuh dan tidak redirect', async () => {

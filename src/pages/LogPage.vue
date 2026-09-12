@@ -137,6 +137,20 @@
       </p>
     </div>
 
+    <!-- Metrics strip — fixed ke kanan layar (beda dengan dataPanel ErdPage yang
+         nempel taskbar): buka halaman System Metrics admin -->
+    <button
+      @click="$router.push('/metrics')"
+      class="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2 py-4 px-1.5 rounded-l-lg border border-r-0 transition group"
+      :class="isDark
+        ? 'bg-zinc-800/90 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700/90'
+        : 'bg-white/95 border-gray-200 text-gray-500 hover:text-[#0f8cd5] hover:bg-white shadow-md'"
+      title="System Metrics"
+    >
+      <TrendingUpIcon :size="15" />
+      <span class="text-[9px] font-bold tracking-[0.2em] [writing-mode:vertical-rl]">METRICS</span>
+    </button>
+
     <!-- Validation: logout -->
     <ConfirmDialog
       :open="logoutConfirm.open"
@@ -162,6 +176,7 @@ import HomeIcon from '@/components/icons/HomeIcon.vue'
 import GemonoIcon from '@/components/icons/GemonoIcon.vue'
 import DatabaseIcon from '@/components/icons/DatabaseIcon.vue'
 import TerminalIcon from '@/components/icons/TerminalIcon.vue'
+import TrendingUpIcon from '@/components/icons/TrendingUpIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
 import LogOutIcon from '@/components/icons/LogOutIcon.vue'
