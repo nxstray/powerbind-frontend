@@ -20,13 +20,13 @@
         <line v-for="(g, i) in gridLines" :key="'g' + i" :x1="PAD_L" :x2="W" :y1="g.y" :y2="g.y" :stroke="gridStroke" />
         <line v-for="(v, i) in vGridX" :key="'v' + i" :x1="v" :x2="v" :y1="0" :y2="PLOT_H" :stroke="vGridStroke" />
 
-        <!-- Series lines -->
+        <!-- Series lines — hanya series yang digambar (bisa difokus dari legend) -->
         <polyline
-          v-for="(s, i) in visibleSeries"
-          :key="'l' + i"
-          :points="polyPoints(s)"
+          v-for="x in drawnSeries"
+          :key="'l' + x.i"
+          :points="polyPoints(x.s)"
           fill="none"
-          :stroke="lineColor(i)"
+          :stroke="lineColor(x.i)"
           stroke-width="1.4"
           stroke-linejoin="round"
           stroke-linecap="round"
@@ -60,25 +60,36 @@
         :style="tooltipStyle"
       >
         <p class="font-medium mb-1 opacity-70 whitespace-nowrap">{{ hoverTimeLabel }}</p>
-        <div v-for="(s, i) in visibleSeries" :key="s.name" class="flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: lineColor(i) }" />
-          <span class="opacity-70 truncate max-w-55">{{ s.name }}</span>
-          <span class="ml-auto font-mono">{{ fmtAt(s) }}</span>
+        <div v-for="x in drawnSeries" :key="x.s.name" class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: lineColor(x.i) }" />
+          <span class="opacity-70 truncate max-w-55">{{ x.s.name }}</span>
+          <span class="ml-auto font-mono">{{ fmtAt(x.s) }}</span>
         </div>
       </div>
 
-      <!-- X tick labels -->
-      <div
-        class="flex justify-between text-[9.5px] mt-1 pb-1"
-        :style="{ paddingLeft: PAD_L + 'px', color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)' }"
-      >
-        <span v-for="(t, i) in xTicks" :key="i">{{ t }}</span>
-      </div>
+        <!-- X tick labels — sejajar garis vertikal (setiap 15 menit). Kalau garis
+             terlalu rapat (range 6/24 jam), label hanya tiap garis ke-n. -->
+        <div class="relative h-4 mt-0.5" :style="{ color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)' }">
+          <span
+            v-for="(t, i) in timeTicks"
+            v-show="i % xLabelStep === 0"
+            :key="'x' + i"
+            class="absolute top-0 text-[9.5px] font-mono whitespace-nowrap"
+            :style="xLabelStyle(t)"
+          >{{ fmtTick(t) }}</span>
+        </div>
     </div>
 
-    <!-- Legend — satu baris per series: dash warna + label lengkap (Grafana) -->
+    <!-- Legend — satu baris per series: dash warna + label lengkap (Grafana).
+         Klik strip = fokus series itu saja; klik lagi = tampilkan semua. -->
     <div v-if="visibleSeries.length" class="custom-scroll max-h-30 overflow-y-auto px-3 py-2 space-y-1 border-t" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
-      <div v-for="(s, i) in visibleSeries" :key="s.name" class="flex items-center gap-2 text-[10px] min-w-0">
+      <div
+        v-for="(s, i) in visibleSeries"
+        :key="s.name"
+        class="flex items-center gap-2 text-[10px] min-w-0 cursor-pointer select-none transition-opacity"
+        :class="focusedSeries !== null && focusedSeries !== i ? 'opacity-30' : 'opacity-100'"
+        @click="focusedSeries = focusedSeries === i ? null : i"
+      >
         <span class="w-4 h-0.5 rounded-full shrink-0" :style="{ background: lineColor(i) }" />
         <span class="truncate" :class="isDark ? 'text-zinc-300' : 'text-gray-600'">{{ s.name }}</span>
       </div>
@@ -119,20 +130,30 @@ const hoverY = ref(null)
 
 const visibleSeries = computed(() => props.series.filter((s) => s.points?.length))
 
+// Klik legend strip → fokus satu series (index asli dipertahankan supaya warnanya
+// tidak berubah); klik lagi → tampilkan semua.
+const focusedSeries = ref(null)
+const drawnSeries = computed(() =>
+  visibleSeries.value
+    .map((s, i) => ({ s, i }))
+    .filter(({ i }) => focusedSeries.value === null || i === focusedSeries.value),
+)
+
 // Warna grid mengikuti tema — putih-transparan di panel gelap, hitam-transparan di panel terang
 const gridStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.12)'))
 const vGridStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.16)'))
 const crossStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'))
 
-// Gridline vertikal — lebih rapat dari sebelumnya (12 lines) supaya kotak grid
-// terlihat lebih padat seperti panel Grafana asli.
-const V_GRID_COUNT = 20
-const vGridX = computed(() => {
-  const plotW = W - PAD_L
+// Gridline vertikal — setiap 15 menit, sejajar jam (09:45, 10:00, ...) seperti
+// Grafana. Label X dirender per garis ini (lihat template X tick labels).
+const V_STEP_MS = 15 * 60 * 1000
+const timeTicks = computed(() => {
+  const { t0, t1 } = timeRange.value
   const out = []
-  for (let i = 0; i <= V_GRID_COUNT; i++) out.push(PAD_L + (plotW * i) / V_GRID_COUNT)
+  for (let t = Math.ceil(t0 / V_STEP_MS) * V_STEP_MS; t <= t1; t += V_STEP_MS) out.push(t)
   return out
 })
+const vGridX = computed(() => timeTicks.value.map((t) => xAt(t)))
 
 // Rentang waktu global dari semua series (untuk skala X & interpolasi tooltip)
 const timeRange = computed(() => {
@@ -280,16 +301,15 @@ function onMouseMove(e) {
   hoverY.value = Math.min(yRatio * H, PLOT_H)
 }
 
-// X tick: 6 label jam:menit merata di sepanjang plot
-const xTicks = computed(() => {
-  const { t0, t1 } = timeRange.value
-  const out = []
-  for (let i = 0; i < 6; i++) {
-    const t = t0 + ((t1 - t0) * i) / 5
-    out.push(fmtTick(t))
-  }
-  return out
-})
+// Label X tiap garis vertikal; kalau tick terlalu rapat (range 6/24 jam),
+// tampilkan hanya tiap garis ke-n (maks ±13 label) biar tidak tabrakan.
+const xLabelStep = computed(() => Math.max(1, Math.ceil(timeTicks.value.length / 13)))
+function xLabelStyle(t) {
+  const pct = (xAt(t) / W) * 100
+  // Clamp di tepi kiri/kanan supaya label tidak terpotong border panel
+  const transform = pct < 4 ? 'translateX(0)' : pct > 96 ? 'translateX(-100%)' : 'translateX(-50%)'
+  return { left: pct + '%', transform }
+}
 
 function fmtTick(ms) {
   const d = new Date(ms)
