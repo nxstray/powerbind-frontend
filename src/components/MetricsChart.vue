@@ -122,11 +122,13 @@ const gridStroke = 'rgba(255,255,255,0.22)'
 const vGridStroke = 'rgba(255,255,255,0.3)'
 const crossStroke = 'rgba(255,255,255,0.5)'
 
-// 6 gridline vertikal merata
+// Gridline vertikal — lebih rapat dari sebelumnya (12 lines) supaya kotak grid
+// terlihat lebih padat seperti panel Grafana asli.
+const V_GRID_COUNT = 20
 const vGridX = computed(() => {
   const plotW = W - PAD_L
   const out = []
-  for (let i = 0; i <= 5; i++) out.push(PAD_L + (plotW * i) / 5)
+  for (let i = 0; i <= V_GRID_COUNT; i++) out.push(PAD_L + (plotW * i) / V_GRID_COUNT)
   return out
 })
 
@@ -142,7 +144,7 @@ const timeRange = computed(() => {
   return { t0, t1: t1 > t0 ? t1 : t0 + 1 }
 })
 
-// Max global untuk skala Y (baseline 0 — natural untuk memori/CPU/counter)
+// Max global mentah dari data (baseline 0 — natural untuk memori/CPU/counter)
 const maxVal = computed(() => {
   let max = 0
   for (const s of visibleSeries.value) {
@@ -151,13 +153,58 @@ const maxVal = computed(() => {
   return max > 0 ? max : 1
 })
 
-// 5 gridline: 0%, 25%, 50%, 75%, 100% — label Y format ala Grafana ("150 Mil")
+// ---- Nice round-number ticks ala Grafana/D3 -----------------------------------
+// Supaya gridline jatuh di angka bulat (0, 25 Mil, 50 Mil, 75 Mil, 100 Mil...)
+// alih-alih persentase mentah dari nilai max aktual.
+// Termasuk pecahan "2.5" (selain 1/2/5/10) supaya bisa jatuh di kelipatan
+// 25 (2.5 × 10^n) seperti 25 Mil/50 Mil/... ala Grafana, bukan cuma 20/50.
+function niceNum(range, round) {
+  const exponent = Math.floor(Math.log10(range))
+  const fraction = range / Math.pow(10, exponent)
+  let niceFraction
+  if (round) {
+    if (fraction < 1.5) niceFraction = 1
+    else if (fraction < 2.25) niceFraction = 2
+    else if (fraction < 3.75) niceFraction = 2.5
+    else if (fraction < 7) niceFraction = 5
+    else niceFraction = 10
+  } else {
+    if (fraction <= 1) niceFraction = 1
+    else if (fraction <= 2) niceFraction = 2
+    else if (fraction <= 2.5) niceFraction = 2.5
+    else if (fraction <= 5) niceFraction = 5
+    else niceFraction = 10
+  }
+  return niceFraction * Math.pow(10, exponent)
+}
+
+function niceTicks(max, tickDivisions = 8) {
+  if (max <= 0) return { niceMax: 1, step: 1 }
+  const range = niceNum(max, false)
+  const step = niceNum(range / tickDivisions, true)
+  const niceMax = Math.ceil(max / step) * step
+  return { niceMax, step }
+}
+
+const ticks = computed(() => niceTicks(maxVal.value, 8))
+
+// Skala Y dipakai bareng oleh gridline & plot titik (yAt), biar garis & data selaras
+const yScaleMax = computed(() => ticks.value.niceMax || maxVal.value)
+
+// Ruang cadangan di atas plot supaya label gridline paling atas (mis. "150 Mil")
+// tidak kepotong oleh border panel saat translateY(-50%) menariknya ke atas.
+const TOP_PAD = 10
+
+// Gridline: dari 0 sampai niceMax, per step bulat — label ala Grafana ("150 Mil")
 const gridLines = computed(() => {
+  const { niceMax, step } = ticks.value
+  const n = Math.max(1, Math.round(niceMax / step))
+  const usableH = PLOT_H - TOP_PAD
   const out = []
-  for (let i = 0; i <= 4; i++) {
-    const ratio = i / 4
-    const y = i === 0 ? PLOT_H : PLOT_H - ratio * PLOT_H
-    out.push({ y, label: fmtY(maxVal.value * ratio) })
+  for (let i = 0; i <= n; i++) {
+    const val = i * step
+    const y = TOP_PAD + usableH - (val / niceMax) * usableH
+    out.push({ y, label: fmtY(val) })
   }
   return out
 })
@@ -213,8 +260,9 @@ function xAt(t) {
   return PAD_L + ((t - t0) / span) * plotW
 }
 function yAt(v) {
-  const max = maxVal.value
-  return PLOT_H - Math.min(Math.max(v / max, 0), 1) * (PLOT_H - 4) - 2
+  const max = yScaleMax.value
+  const usableH = PLOT_H - TOP_PAD
+  return TOP_PAD + usableH - Math.min(Math.max(v / max, 0), 1) * usableH
 }
 function polyPoints(s) {
   return s.points.map((p) => `${xAt(p.t).toFixed(1)},${yAt(p.v).toFixed(1)}`).join(' ')
@@ -289,5 +337,4 @@ const tooltipStyle = computed(() => {
     transform: flip ? 'translateX(calc(-100% - 14px))' : 'translateX(14px)',
   }
 })
-
 </script>
