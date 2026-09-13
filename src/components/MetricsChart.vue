@@ -4,18 +4,6 @@
     <div class="flex items-center gap-2 px-3 py-1.5 border-b border-[#2c3235]">
       <p class="text-[12px] font-semibold text-zinc-200 truncate">{{ title || 'Graph' }}</p>
       <p v-if="subtitle" class="text-[10px] font-mono text-zinc-500 truncate hidden sm:block">{{ subtitle }}</p>
-
-      <div class="ml-auto flex items-center gap-1 shrink-0">
-        <button
-          v-for="m in DRAW_MODES"
-          :key="m"
-          @click="drawMode = m"
-          class="text-[10.5px] px-2 py-0.5 rounded transition"
-          :class="drawMode === m ? 'bg-[#3d71d9] text-white font-semibold' : 'text-zinc-400 hover:text-zinc-200'"
-        >
-          {{ m }}
-        </button>
-      </div>
     </div>
 
     <div class="relative px-2 pt-2">
@@ -28,46 +16,40 @@
         @mousemove="onMouseMove"
         @mouseleave="hoverX = null; hoverY = null"
       >
-        <!-- Grid solid — horizontal + vertical, ala Grafana -->
+        <!-- Grid solid — horizontal + vertikal (digaris bawahi biar jelas) -->
         <line v-for="(g, i) in gridLines" :key="'g' + i" :x1="PAD_L" :x2="W" :y1="g.y" :y2="g.y" :stroke="gridStroke" />
-        <line v-for="(v, i) in vGridX" :key="'v' + i" :x1="v" :x2="v" :y1="0" :y2="PLOT_H" :stroke="gridStroke" />
-        <text
-          v-for="(g, i) in gridLines"
-          :key="'t' + i"
-          :x="PAD_L - 4"
-          :y="g.y + 3"
-          text-anchor="end"
-          class="font-mono"
-          :font-size="7.5"
-          :fill="tickFill"
-        >
-          {{ g.label }}
-        </text>
+        <line v-for="(v, i) in vGridX" :key="'v' + i" :x1="v" :x2="v" :y1="0" :y2="PLOT_H" :stroke="vGridStroke" />
 
-        <!-- Series drawing — bentuk mengikuti draw-mode -->
-        <g v-for="(s, i) in drawSeries" :key="'l' + i">
-          <template v-if="isLineMode">
-            <polyline
-              :points="polyPoints(s)"
-              fill="none"
-              :stroke="lineColor(i)"
-              :stroke-width="drawMode === 'Stacked lines' ? 1.6 : 1.4"
-              stroke-linejoin="round"
-              stroke-linecap="round"
-            />
-          </template>
-          <template v-else-if="drawMode === 'Bars' || drawMode === 'Stacked bars'">
-            <rect v-for="(r, j) in barRects(s)" :key="'r' + j" :x="r.x" :y="r.y" :width="r.w" :height="r.h" :fill="lineColor(i)" />
-          </template>
-          <template v-else-if="drawMode === 'Points'">
-            <circle v-for="(p, j) in s.points" :key="'c' + j" :cx="xAt(p.t)" :cy="yAt(p.v)" r="1.8" :fill="lineColor(i)" />
-          </template>
-        </g>
+        <!-- Series lines -->
+        <polyline
+          v-for="(s, i) in visibleSeries"
+          :key="'l' + i"
+          :points="polyPoints(s)"
+          fill="none"
+          :stroke="lineColor(i)"
+          stroke-width="1.4"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
 
         <!-- Crosshair follows the cursor continuously (X + Y) -->
         <line v-if="hoverX !== null" :x1="hoverX" :x2="hoverX" :y1="0" :y2="PLOT_H" :stroke="crossStroke" stroke-width="1" stroke-dasharray="3,3" />
         <line v-if="hoverY !== null" :x1="PAD_L" :x2="W" :y1="hoverY" :y2="hoverY" :stroke="crossStroke" stroke-width="1" stroke-dasharray="3,3" />
       </svg>
+
+      <!-- Y tick labels — HTML overlay (bukan <text> SVG) supaya font tidak ikut
+           ter-stretch horizontal oleh preserveAspectRatio="none", dan label teratas
+           tidak terpotong (translateY(-50%) boleh keluar sedikit dari box). -->
+      <div class="absolute inset-0 pointer-events-none">
+        <span
+          v-for="(g, i) in gridLines"
+          :key="'t' + i"
+          class="absolute left-0 w-[5.4%] pr-0.5 text-right text-[10px] font-mono text-zinc-500"
+          :style="{ top: g.y + 'px', transform: 'translateY(-50%)' }"
+        >
+          {{ g.label }}
+        </span>
+      </div>
 
       <!-- Tooltip: precise timestamp + per-series values at the hovered instant -->
       <div
@@ -76,7 +58,7 @@
         :style="tooltipStyle"
       >
         <p class="font-medium mb-1 opacity-70 whitespace-nowrap">{{ hoverTimeLabel }}</p>
-        <div v-for="(s, i) in drawSeries" :key="s.name" class="flex items-center gap-1.5">
+        <div v-for="(s, i) in visibleSeries" :key="s.name" class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: lineColor(i) }" />
           <span class="opacity-70 truncate max-w-55">{{ s.name }}</span>
           <span class="ml-auto font-mono">{{ fmtAt(s) }}</span>
@@ -93,8 +75,8 @@
     </div>
 
     <!-- Legend — satu baris per series: dash warna + label lengkap (Grafana) -->
-    <div v-if="drawSeries.length" class="custom-scroll max-h-30 overflow-y-auto px-3 py-2 space-y-1 border-t border-[#2c3235]">
-      <div v-for="(s, i) in drawSeries" :key="s.name" class="flex items-center gap-2 text-[10px] min-w-0">
+    <div v-if="visibleSeries.length" class="custom-scroll max-h-30 overflow-y-auto px-3 py-2 space-y-1 border-t border-[#2c3235]">
+      <div v-for="(s, i) in visibleSeries" :key="s.name" class="flex items-center gap-2 text-[10px] min-w-0">
         <span class="w-4 h-0.5 rounded-full shrink-0" :style="{ background: lineColor(i) }" />
         <span class="text-zinc-300 truncate">{{ s.name }}</span>
       </div>
@@ -127,11 +109,7 @@ function lineColor(i) {
   return COLORS[i % COLORS.length]
 }
 
-// ---- Grafana draw modes: Lines / Bars / Points / Stacked lines / Stacked bars ----
-const DRAW_MODES = ['Lines', 'Bars', 'Points', 'Stacked lines', 'Stacked bars']
-const drawMode = ref('Lines')
-const isLineMode = computed(() => drawMode.value === 'Lines' || drawMode.value === 'Stacked lines')
-const isStacked = computed(() => drawMode.value === 'Stacked lines' || drawMode.value === 'Stacked bars')
+// ---- Grafana draw mode — Lines saja (per design) ----
 
 const svgEl = ref(null)
 const hoverX = ref(null)
@@ -139,26 +117,10 @@ const hoverY = ref(null)
 
 const visibleSeries = computed(() => props.series.filter((s) => s.points?.length))
 
-// Panel permanen gelap (Grafana) — warna statis, tidak lagi mengikuti isDark
+// Grid vertikal — stroke sedikit lebih tegas agar jelas terlihat
 const gridStroke = 'rgba(255,255,255,0.22)'
+const vGridStroke = 'rgba(255,255,255,0.3)'
 const crossStroke = 'rgba(255,255,255,0.5)'
-const tickFill = 'rgba(255,255,255,0.45)'
-
-// Series yang digambar — versi kumulatif saat mode Stacked (base = jumlah series di bawahnya)
-const drawSeries = computed(() => {
-  if (!isStacked.value) return visibleSeries.value
-  const list = visibleSeries.value
-  const out = list.map((s) => ({ ...s, points: [] }))
-  const n = Math.min(...list.map((s) => s.points.length))
-  for (let pi = 0; pi < n; pi++) {
-    let acc = 0
-    for (let si = 0; si < list.length; si++) {
-      acc += list[si].points[pi].v
-      out[si].points.push({ t: list[si].points[pi].t, v: acc })
-    }
-  }
-  return out
-})
 
 // 6 gridline vertikal merata
 const vGridX = computed(() => {
@@ -256,17 +218,6 @@ function yAt(v) {
 }
 function polyPoints(s) {
   return s.points.map((p) => `${xAt(p.t).toFixed(1)},${yAt(p.v).toFixed(1)}`).join(' ')
-}
-// Bars: rect per titik — lebar mengikuti kepadatan data
-function barRects(s) {
-  const pts = s.points
-  if (!pts.length) return []
-  const w = Math.max((pts[1] ? xAt(pts[1].t) - xAt(pts[0].t) : 3) - 1, 1.5)
-  return pts.map((p) => {
-    const x = xAt(p.t)
-    const y = yAt(p.v)
-    return { x: x - w / 2, y, w, h: Math.max(PLOT_H - y, 0.5) }
-  })
 }
 
 function onMouseMove(e) {
