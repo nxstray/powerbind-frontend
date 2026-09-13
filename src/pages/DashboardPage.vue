@@ -269,6 +269,7 @@
                   :key="room.id"
                   :room="room"
                   @request-off="askTurnOff"
+                  @request-on="askTurnOn"
                 />
               </div>
             </div>
@@ -309,6 +310,18 @@
       cancel-text="Batal"
       @confirm="confirmTurnOff"
       @cancel="cancelTurnOff"
+    />
+
+    <!-- Validation: turn a room's device on -->
+    <ConfirmDialog
+      :open="turnOnConfirm.open"
+      :loading="turnOnConfirm.loading"
+      title="Nyalakan Perangkat"
+      :message="`Yakin ingin menyalakan perangkat di ${turnOnConfirm.room?.name || 'ruangan ini'}? Sistem bisa mematikannya otomatis jika tidak ada kehadiran terdeteksi.`"
+      confirm-text="Nyalakan"
+      cancel-text="Batal"
+      @confirm="confirmTurnOn"
+      @cancel="cancelTurnOn"
     />
 
     <!-- Validation: logout -->
@@ -375,6 +388,9 @@ let stompClient = null
 
 // Validation dialog state — relay off
 const relayConfirm = ref({ open: false, room: null, loading: false })
+
+// Validation dialog state — relay on
+const turnOnConfirm = ref({ open: false, room: null, loading: false })
 
 // Validation dialog state — logout
 const logoutConfirm = ref({ open: false, loading: false })
@@ -558,6 +574,28 @@ async function confirmTurnOff() {
 function cancelTurnOff() {
   if (relayConfirm.value.loading) return
   relayConfirm.value = { open: false, room: null, loading: false }
+}
+
+// Relay on validation flow
+function askTurnOn(room) {
+  turnOnConfirm.value = { open: true, room, loading: false }
+}
+
+async function confirmTurnOn() {
+  if (!turnOnConfirm.value.room) return
+  turnOnConfirm.value.loading = true
+  try {
+    await store.setRoomRelay(turnOnConfirm.value.room.id, true)
+    turnOnConfirm.value = { open: false, room: null, loading: false }
+  } catch (e) {
+    console.warn('[Dashboard] Failed to turn on relay')
+    turnOnConfirm.value.loading = false
+  }
+}
+
+function cancelTurnOn() {
+  if (turnOnConfirm.value.loading) return
+  turnOnConfirm.value = { open: false, room: null, loading: false }
 }
 
 // Logout validation flow
