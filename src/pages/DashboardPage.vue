@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex transition-colors duration-1000 ease-in-out" :class="themeClass" :style="{ '--accent-color': accentColor }">
+  <div class="h-screen overflow-hidden flex transition-colors duration-1000 ease-in-out" :class="themeClass" :style="{ '--accent-color': accentColor }">
 
     <!-- Mobile overlay -->
     <div
@@ -92,7 +92,7 @@
       </div>
 
       <!-- Topbar -->
-      <header class="h-14 md:h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shrink-0 relative z-10">
+      <header class="h-14 md:h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-10">
         <div class="flex items-center gap-3">
           <button @click="sidebarOpen = true" class="md:hidden text-gray-500 hover:text-gray-700">
             <MenuIcon :size="20" />
@@ -122,7 +122,7 @@
       </header>
 
       <!-- Content -->
-      <main class="custom-scroll flex-1 p-4 md:p-6 overflow-auto space-y-4 md:space-y-5 relative z-10">
+      <main class="custom-scroll flex-1 min-h-0 p-4 md:p-6 overflow-auto space-y-4 md:space-y-5 relative z-10">
 
         <!-- Loading state -->
         <div v-if="store.loading" class="flex items-center justify-center h-64">
