@@ -300,6 +300,7 @@ import HomeIcon from '@/components/icons/HomeIcon.vue'
 import GemonoIcon from '@/components/icons/GemonoIcon.vue'
 import DatabaseIcon from '@/components/icons/DatabaseIcon.vue'
 import TerminalIcon from '@/components/icons/TerminalIcon.vue'
+import TrendingUpIcon from '@/components/icons/TrendingUpIcon.vue'
 import LogOutIcon from '@/components/icons/LogOutIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
@@ -417,11 +418,12 @@ const navItems = computed(() => {
     { name: 'Dashboard', routeName: 'dashboard', to: '/', icon: HomeIcon },
     { name: 'Gemono', routeName: 'agent', to: lastId ? `/agent/${lastId}` : '/agent', icon: GemonoIcon },
   ]
-  // ERD/Log are admin-only — the role comes from the profile in authStore.
+  // ERD/Log/Metrics are admin-only — the role comes from the profile in authStore.
   if (authStore.user?.role === 'ADMIN') {
     items.push(
       { name: 'ERD', routeName: 'erd', to: '/erd', icon: DatabaseIcon },
       { name: 'Log', routeName: 'log', to: '/log', icon: TerminalIcon },
+      { name: 'Metrics', routeName: 'metrics', to: '/metrics', icon: TrendingUpIcon },
     )
   }
   return items
