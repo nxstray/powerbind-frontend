@@ -460,7 +460,7 @@ async function fetchWeather() {
   }
 }
 
-// ERD/Log are admin-only — the role comes from the profile the authStore
+// ERD/Log/Metrics are admin-only — the role comes from the profile the authStore
 // fetches on mount, so the items appear only for ADMIN accounts.
 const navItems = computed(() => {
   const items = [
@@ -471,6 +471,7 @@ const navItems = computed(() => {
     items.push(
       { name: 'ERD', routeName: 'erd', to: '/erd', icon: DatabaseIcon },
       { name: 'Log', routeName: 'log', to: '/log', icon: TerminalIcon },
+      { name: 'Metrics', routeName: 'metrics', to: '/metrics', icon: TrendingUpIcon },
     )
   }
   return items
