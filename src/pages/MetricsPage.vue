@@ -114,7 +114,7 @@
           :series="memorySeries"
           format="bytes"
           title="JVM Memory Used"
-          subtitle="sum by (area) (jvm_memory_used_bytes)"
+          subtitle="jvm_memory_used_bytes"
         />
 
         <MetricsChart :series="cpuSeries" format="ratio" title="Process CPU Usage" subtitle="process_cpu_usage" />
@@ -265,7 +265,7 @@ async function fetchChart(metric, groupBy, agg) {
 async function fetchAll() {
   try {
     const [mem, cpu] = await Promise.all([
-      fetchChart(DEFAULT_METRIC, 'area', 'sum'),
+      fetchChart(DEFAULT_METRIC, null, 'sum'),
       fetchChart(CPU_METRIC, null, 'avg'),
     ])
     memorySeries.value = mem.series
