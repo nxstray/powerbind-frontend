@@ -64,9 +64,9 @@
       </div>
     </aside>
 
-    <div class="flex-1 flex flex-col min-w-0 h-screen">
+    <div class="flex-1 flex flex-col min-w-0 relative overflow-hidden h-screen">
       <!-- Header -->
-      <div class="px-4 sm:px-6 pt-4 pb-2 flex items-center gap-3">
+      <div class="px-4 sm:px-6 pt-4 pb-2 flex items-center gap-3 shrink-0">
         <button
           @click="sidebarOpen = true"
           class="md:hidden transition"
@@ -78,7 +78,7 @@
         <span v-if="lastUpdated" class="text-[10px]" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">updated {{ lastUpdated }}</span>
 
         <!-- Range dropdown -->
-        <div class="relative ml-auto" data-range-dd>
+        <div class="relative ml-auto mr-36" data-range-dd>
           <button
             @click="rangeOpen = !rangeOpen"
             class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
@@ -106,7 +106,7 @@
       </div>
 
       <!-- Charts — scroll internal dengan custom-scroll (warna thumb mengikuti --accent-color tema) -->
-      <main class="custom-scroll flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-3">
+      <main class="custom-scroll flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-6 space-y-3">
         <div v-if="error" class="rounded-md border border-red-200 bg-red-50 text-red-600 text-xs px-3 py-2">{{ error }}</div>
 
         <!-- Panels Grafana — dark card permanen dengan header title + query -->
@@ -124,14 +124,34 @@
           <div class="flex items-center gap-2 px-3 py-1.5 border-b" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
             <p class="text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-200' : 'text-gray-800'">Custom metric</p>
             <p v-if="customMetric" class="text-[10px] font-mono truncate hidden sm:block" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">{{ customMetric }}</p>
-            <select
-              v-model="customMetric"
-              class="ml-auto shrink-0 text-[10px] rounded border px-1.5 py-1 outline-none focus:border-[#3d71d9] max-w-60"
-              :class="isDark ? 'border-[#41474d] bg-[#22252b] text-zinc-300' : 'border-gray-200 bg-gray-50 text-gray-600'"
-            >
-              <option value="" disabled>— pilih metrik —</option>
-              <option v-for="n in metricNames" :key="n" :value="n">{{ n }}</option>
-            </select>
+            <div class="relative ml-auto" data-metric-dd>
+              <button
+                @click="metricOpen = !metricOpen"
+                class="flex items-center gap-1.5 text-[10px] font-medium rounded border px-2 py-1 transition max-w-60"
+                :class="isDark ? 'border-[#41474d] bg-[#22252b] text-zinc-300 hover:border-zinc-500' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-[#0f8cd5]'"
+              >
+                <span class="truncate">{{ customMetric || '— pilih metrik —' }}</span>
+                <ChevronLeftIcon :size="11" :class="metricOpen ? 'rotate-90' : '-rotate-90'" class="transition-transform shrink-0" />
+              </button>
+              <div
+                v-if="metricOpen"
+                class="absolute right-0 top-full mt-1 w-64 rounded-md shadow-lg z-10 overflow-hidden border"
+                :class="isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-100'"
+              >
+                <div class="max-h-60 overflow-y-auto custom-scroll">
+                  <button
+                    v-for="n in metricNames"
+                    :key="n"
+                    @click="selectMetric(n)"
+                    class="w-full text-left px-3 py-1.5 text-[10px] font-mono transition"
+                    :class="customMetric === n ? (isDark ? 'bg-white/10 text-white' : 'bg-[#0f8cd5]/10 text-[#0f8cd5]') : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50')"
+                  >
+                    {{ n }}
+                  </button>
+                  <p v-if="!metricNames.length" class="px-3 py-2 text-[10px]" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">Daftar metrik kosong.</p>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="p-2">
             <MetricsChart v-if="customMetric" :series="customSeries" :is-dark="isDark" />
@@ -139,56 +159,57 @@
           </div>
         </div>
       </main>
-    </div>
 
-    <!-- Agent overlay — collapsed ke strip kecil di pojok kanan atas -->
-    <button
-      v-if="!askOpen"
-      @click="askOpen = true"
-      class="fixed right-4 top-4 z-40 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-md transition bg-white border border-gray-200 text-gray-600 hover:text-[#0f8cd5] hover:border-[#0f8cd5]"
-    >
-      <GemonoIcon :size="14" class="rounded-sm" />
-      Ask Gemono
-    </button>
+      <!-- Agent overlay — absolute dalam kolom supaya rata dengan container chart
+           (right-6 = sama dengan px-6 area chart) dan tetap diam saat chart scroll -->
+      <button
+        v-if="!askOpen"
+        @click="askOpen = true"
+        class="absolute right-9 top-4 z-40 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-md transition bg-white border border-gray-200 text-gray-600 hover:text-[#0f8cd5] hover:border-[#0f8cd5]"
+      >
+        <GemonoIcon :size="14" variant="dark" class="rounded-sm" />
+        Ask Gemono
+      </button>
 
-    <div
-      v-if="askOpen"
-      class="fixed right-4 top-4 z-40 w-80 max-h-[70vh] rounded-lg border border-gray-200 bg-white shadow-xl flex flex-col"
-    >
-      <div class="flex items-center gap-1.5 px-3 py-2 border-b border-gray-100 shrink-0">
-        <GemonoIcon :size="14" class="rounded-sm text-[#0f8cd5]" />
-        <p class="text-xs font-semibold">Ask Gemono — metric explained</p>
-        <button @click="askOpen = false" class="ml-auto text-gray-400 hover:text-gray-700 transition">
-          <CloseIcon :size="13" />
-        </button>
-      </div>
+      <div
+        v-if="askOpen"
+        class="absolute right-9 top-4 z-40 w-80 max-h-[70vh] rounded-lg border border-gray-200 bg-white shadow-xl flex flex-col"
+      >
+        <div class="flex items-center gap-1.5 px-3 py-2 border-b border-gray-100 shrink-0">
+          <GemonoIcon :size="14" variant="dark" class="rounded-sm" />
+          <p class="text-xs font-semibold">Ask Gemono — metric explained</p>
+          <button @click="askOpen = false" class="ml-auto text-gray-400 hover:text-gray-700 transition">
+            <CloseIcon :size="13" />
+          </button>
+        </div>
 
-      <div class="flex-1 overflow-y-auto custom-scroll px-3 py-2.5 text-xs space-y-2">
-        <template v-if="askMessages.length">
-          <div v-for="(m, i) in askMessages" :key="i" :class="m.role === 'user' ? 'text-right' : ''">
-            <p
-              v-if="m.role === 'user'"
-              class="inline-block rounded-lg bg-[#0f8cd5] text-white px-2.5 py-1.5 text-left max-w-[85%]"
-            >{{ m.content }}</p>
-            <div v-else class="text-left">
-              <MarkdownRenderer :content="m.content" />
-              <span v-if="m.streaming" class="inline-block w-1.5 h-3 bg-[#0f8cd5] animate-pulse align-text-bottom" />
+        <div class="flex-1 overflow-y-auto custom-scroll px-3 py-2.5 text-xs space-y-2">
+          <template v-if="askMessages.length">
+            <div v-for="(m, i) in askMessages" :key="i" :class="m.role === 'user' ? 'text-right' : ''">
+              <p
+                v-if="m.role === 'user'"
+                class="inline-block rounded-lg bg-[#0f8cd5] text-white px-2.5 py-1.5 text-left max-w-[85%]"
+              >{{ m.content }}</p>
+              <div v-else class="text-left">
+                <MarkdownRenderer :content="m.content" />
+                <span v-if="m.streaming" class="inline-block w-1.5 h-3 bg-[#0f8cd5] animate-pulse align-text-bottom" />
+              </div>
             </div>
-          </div>
-        </template>
-        <p v-else class="text-gray-400 text-[11px]">Tanyakan apa arti grafik di halaman ini.</p>
-      </div>
+          </template>
+          <p v-else class="text-gray-400 text-[11px]">Tanyakan apa arti grafik di halaman ini.</p>
+        </div>
 
-      <form @submit.prevent="sendAsk" class="flex items-center gap-1.5 px-3 py-2 border-t border-gray-100 shrink-0">
-        <input
-          v-model="askInput"
-          placeholder="Explain the memory chart…"
-          class="flex-1 text-xs rounded-md border border-gray-200 px-2 py-1.5 outline-none focus:border-[#0f8cd5]"
-        />
-        <button type="submit" :disabled="!askInput.trim() || askStreaming" class="text-[#0f8cd5] disabled:opacity-30">
-          <SendIcon :size="14" />
-        </button>
-      </form>
+        <form @submit.prevent="sendAsk" class="flex items-center gap-1.5 px-3 py-2 border-t border-gray-100 shrink-0">
+          <input
+            v-model="askInput"
+            placeholder="Explain the memory chart…"
+            class="flex-1 text-xs rounded-md border border-gray-200 px-2 py-1.5 outline-none focus:border-[#0f8cd5]"
+          />
+          <button type="submit" :disabled="!askInput.trim() || askStreaming" class="text-[#0f8cd5] disabled:opacity-30">
+            <SendIcon :size="14" />
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Validation: logout -->
@@ -250,10 +271,17 @@ const customMetric = ref('')
 const error = ref(null)
 const lastUpdated = ref('')
 const rangeOpen = ref(false)
+const metricOpen = ref(false)
 
 function selectRange(v) {
   hours.value = v
   rangeOpen.value = false
+  fetchAll()
+}
+
+function selectMetric(n) {
+  customMetric.value = n
+  metricOpen.value = false
   fetchAll()
 }
 
@@ -404,11 +432,13 @@ function sendAsk() {
   )
 }
 
-// Tutup dropdown range saat klik di luar (dropdown & trigger ditandai data-range-dd)
+// Tutup dropdown range & metrik saat klik di luar (trigger + panel ditandai data-*-dd)
 function onGlobalClick(e) {
-  if (!rangeOpen.value) return
+  if (!rangeOpen.value && !metricOpen.value) return
   if (e.target.closest && e.target.closest('[data-range-dd]')) return
+  if (e.target.closest && e.target.closest('[data-metric-dd]')) return
   rangeOpen.value = false
+  metricOpen.value = false
 }
 
 let pollTimer = null
