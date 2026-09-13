@@ -109,32 +109,32 @@
       <main class="custom-scroll flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-3">
         <div v-if="error" class="rounded-md border border-red-200 bg-red-50 text-red-600 text-xs px-3 py-2">{{ error }}</div>
 
-        <div class="rounded-lg border border-gray-200 bg-white p-3">
-          <p class="text-xs font-semibold mb-0.5">JVM Memory Used</p>
-          <p class="text-[10px] text-gray-400 font-mono mb-2">sum by (area) (jvm_memory_used_bytes)</p>
-          <MetricsChart :series="memorySeries" format="bytes" />
-        </div>
+        <!-- Panels Grafana — dark card permanen dengan header title + query -->
+        <MetricsChart
+          :series="memorySeries"
+          format="bytes"
+          title="JVM Memory Used"
+          subtitle="sum by (area) (jvm_memory_used_bytes)"
+        />
 
-        <div class="rounded-lg border border-gray-200 bg-white p-3">
-          <p class="text-xs font-semibold mb-0.5">Process CPU Usage</p>
-          <p class="text-[10px] text-gray-400 font-mono mb-2">process_cpu_usage</p>
-          <MetricsChart :series="cpuSeries" format="ratio" />
-        </div>
+        <MetricsChart :series="cpuSeries" format="ratio" title="Process CPU Usage" subtitle="process_cpu_usage" />
 
-        <div class="rounded-lg border border-gray-200 bg-white p-3">
-          <div class="flex items-center justify-between mb-0.5">
-            <p class="text-xs font-semibold">{{ customMetric || 'Custom metric' }}</p>
+        <div class="rounded-lg border border-[#2c3235] bg-[#181b1f] overflow-hidden">
+          <div class="flex items-center gap-2 px-3 py-1.5 border-b border-[#2c3235]">
+            <p class="text-[12px] font-semibold text-zinc-200 truncate">Custom metric</p>
+            <p v-if="customMetric" class="text-[10px] font-mono text-zinc-500 truncate hidden sm:block">{{ customMetric }}</p>
             <select
               v-model="customMetric"
-              class="text-[10px] rounded border border-gray-200 bg-gray-50 text-gray-600 px-1.5 py-1 outline-none focus:border-[#0f8cd5] max-w-60"
+              class="ml-auto shrink-0 text-[10px] rounded border border-[#41474d] bg-[#22252b] text-zinc-300 px-1.5 py-1 outline-none focus:border-[#3d71d9] max-w-60"
             >
               <option value="" disabled>— pilih metrik —</option>
               <option v-for="n in metricNames" :key="n" :value="n">{{ n }}</option>
             </select>
           </div>
-          <p class="text-[10px] text-gray-400 font-mono mb-2">{{ customMetric || '—' }}</p>
-          <MetricsChart v-if="customMetric" :series="customSeries" />
-          <p v-else class="text-[10px] text-gray-400">Pilih metrik dari dropdown untuk melihat grafiknya.</p>
+          <div class="p-2">
+            <MetricsChart v-if="customMetric" :series="customSeries" />
+            <p v-else class="text-[10px] text-zinc-500 p-2">Pilih metrik dari dropdown untuk melihat grafiknya.</p>
+          </div>
         </div>
       </main>
     </div>
