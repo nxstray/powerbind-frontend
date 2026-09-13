@@ -8,50 +8,20 @@
       </div>
 
       <div class="flex items-center gap-1.5 shrink-0">
-        <span
-          :class="room.presenceDetected
-            ? 'bg-[#7ADAA5]/20 text-[#16a34a]'
-            : 'bg-gray-100 text-gray-400'"
-          class="text-[10px] font-semibold px-2 py-0.5 rounded-md shrink-0"
-        >
-          {{ room.presenceDetected ? 'Occupied' : 'Empty' }}
-        </span>
-
-        <!-- Power toggle — small round icon button. Green = relay on, red = relay off.
-             Desktop: a click opens the confirmation dialog directly.
-             Mobile: press-and-hold with a filling ring, then the confirmation dialog opens. -->
-        <AppTooltip :text="room.relayOn ? 'Tekan untuk mematikan perangkat' : 'Perangkat sudah mati'" position="top">
-          <!-- 3D push button toggle with glow effect (relay on = glowing, relay off = dim) -->
-          <button
-            type="button"
-            :disabled="!room.relayOn"
-            @click="handleClick"
-            @pointerdown="handlePointerDown"
-            @pointerup="cancelHold"
-            @pointerleave="cancelHold"
-            @pointercancel="cancelHold"
-            class="power-push-btn relative flex items-center justify-center select-none touch-none"
-            :class="room.relayOn ? 'power-push-btn--on cursor-pointer' : 'cursor-default'"
+        <AppTooltip :text="room.relayOn ? 'Klik untuk mematikan perangkat' : 'Perangkat sudah mati'" position="top">
+          <!-- Pill toggle ala CodePen @cl0udc0ntr0l (njQQbw) — ON = glow cyan, OFF = dim.
+               Klik langsung di semua perangkat (desktop & mobile sama);
+               validasi lewat ConfirmDialog di DashboardPage. -->
+          <div
+            class="toggle shrink-0 cursor-pointer select-none"
+            :class="{ 'toggle-on': room.relayOn }"
+            @click="handleToggle"
           >
-            <PowerIcon :size="14" class="power-push-btn__icon" />
-
-            <!-- Hold-to-confirm progress ring (mobile only) -->
-            <svg v-if="room.relayOn" class="absolute inset-0 -rotate-90 pointer-events-none" viewBox="0 0 28 28">
-              <circle
-                cx="14" cy="14" r="11.5"
-                fill="none"
-                stroke="white"
-                stroke-width="2"
-                stroke-linecap="round"
-                :stroke-dasharray="circumference"
-                :stroke-dashoffset="holding ? 0 : circumference"
-                :style="{
-                  transition: holding ? `stroke-dashoffset ${HOLD_MS}ms linear` : 'stroke-dashoffset 200ms ease-out',
-                  opacity: holding ? 0.9 : 0
-                }"
-              />
-            </svg>
-          </button>
+            <div class="toggle-text-off">OFF</div>
+            <div class="glow-comp"></div>
+            <div class="toggle-button"></div>
+            <div class="toggle-text-on">ON</div>
+          </div>
         </AppTooltip>
       </div>
     </div>
@@ -99,8 +69,6 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import PowerIcon from '@/components/icons/PowerIcon.vue'
 import AppTooltip from '@/components/AppTooltip.vue'
 
 const props = defineProps({
@@ -109,95 +77,108 @@ const props = defineProps({
 
 const emit = defineEmits(['request-off'])
 
-const HOLD_MS = 800
-const circumference = 2 * Math.PI * 11.5
-
-const holding = ref(false)
-const isTouch = ref(false)
-let holdTimer = null
-
-onMounted(() => {
-  isTouch.value = window.matchMedia('(pointer: coarse)').matches
-})
-
-function handleClick() {
-  // On touch devices, only a completed hold confirms — ignore plain taps
-  // so the round button can't be triggered by an accidental tap.
-  if (isTouch.value) return
+// Klik langsung (desktop & mobile sama, tanpa hold). Hanya relay ON yang bisa
+// dimatikan; validasi ditangani ConfirmDialog di DashboardPage.
+function handleToggle() {
   if (props.room.relayOn) emit('request-off', props.room)
-}
-
-function handlePointerDown() {
-  if (!isTouch.value || !props.room.relayOn) return
-  holding.value = true
-  holdTimer = setTimeout(() => {
-    holding.value = false
-    emit('request-off', props.room)
-  }, HOLD_MS)
-}
-
-function cancelHold() {
-  if (holdTimer) {
-    clearTimeout(holdTimer)
-    holdTimer = null
-  }
-  holding.value = false
 }
 </script>
 
 <style scoped>
-/* 3D push button toggle with glow effect, adapted from the CSS toggle-button collection by @AshNolan_ */
-.power-push-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-color: #dfdfdf;
-  box-shadow:
-    0 2px 4px 0 #a4a4a4,
-    0 0 0 2px #e5e5e5,
-    0 0 4px 1px transparent,
-    0 0 0 3px #f9f9f9;
-  transition: box-shadow 200ms ease-in-out, background-color 200ms ease-in-out, transform 150ms ease-in-out;
+/* Pill toggle ala CodePen @cl0udc0ntr0l (https://codepen.io/cl0udc0ntr0l/pen/njQQbw).
+   Diskalakan 75x40 -> 56x28 supaya muat di header kartu ruangan. */
+.toggle {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  border: 2px solid #444249;
+  border-radius: 20px;
+  box-sizing: border-box;
+  transition: border-color 0.6s ease-out;
 }
 
-.power-push-btn__icon {
-  color: #aaa;
-  transition: color 200ms ease-in-out;
+.toggle.toggle-on {
+  border-color: rgba(137, 194, 217, 0.4);
+  transition: all 0.5s 0.15s ease-out;
 }
 
-/* Hover — off/disabled state: subtle lift, no color change since it isn't interactive */
-.power-push-btn:not(.power-push-btn--on):hover {
-  box-shadow:
-    0 2px 5px 0 #999,
-    0 0 0 2px #d8d8d8,
-    0 0 6px 1px transparent,
-    0 0 0 3px #f9f9f9;
+.toggle-button {
+  position: absolute;
+  top: 4px;
+  width: 20px;
+  bottom: 4px;
+  right: 27px;
+  background-color: #444249;
+  border-radius: 19px;
+  cursor: pointer;
+  transition: all 0.3s 0.1s, width 0.1s, top 0.1s, bottom 0.1s;
 }
 
-/* Relay on — glowing state */
-.power-push-btn--on {
-  box-shadow:
-    0 0 4px 0 #0077b3,
-    0 0 0 2px #0094e0,
-    0 0 12px 2px #0094e0,
-    0 0 0 3px #f9f9f9;
+.toggle-on .toggle-button {
+  top: 3px;
+  width: 46px;
+  bottom: 3px;
+  right: 3px;
+  border-radius: 23px;
+  background-color: #89c2da;
+  box-shadow: 0 0 10px #4b7a8d;
+  transition: all 0.2s 0.1s, right 0.1s;
 }
 
-.power-push-btn--on .power-push-btn__icon {
-  color: #0094e0;
+.toggle-text-on {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  line-height: 24px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  color: rgba(0, 0, 0, 0);
 }
 
-/* Hover — on/interactive state: glow intensifies and knob lifts slightly */
-.power-push-btn--on:hover {
-  box-shadow:
-    0 0 6px 0 #005c8a,
-    0 0 0 2px #0077b3,
-    0 0 18px 4px #0094e0,
-    0 0 0 3px #f9f9f9;
-  transform: scale(1.06);
+.toggle-on .toggle-text-on {
+  color: #3b6a7d;
+  transition: color 0.3s 0.15s;
 }
 
-.power-push-btn--on:hover .power-push-btn__icon {
-  color: #33b1f0;
+.toggle-text-off {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 4px;
+  line-height: 24px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  user-select: none;
+  cursor: pointer;
+  color: #444249;
+}
+
+.toggle-on .toggle-text-off {
+  color: rgba(0, 0, 0, 0);
+}
+
+/* Glow streak effect saat ON */
+.glow-comp {
+  position: absolute;
+  opacity: 0;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  border-radius: 6px;
+  background-color: rgba(75, 122, 141, 0.1);
+  box-shadow: 0 0 8px rgba(75, 122, 141, 0.2);
+  transition: opacity 4.5s 1s;
+}
+
+.toggle-on .glow-comp {
+  opacity: 1;
+  transition: opacity 1s;
 }
 </style>
