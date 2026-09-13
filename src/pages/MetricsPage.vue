@@ -115,25 +115,27 @@
           format="bytes"
           title="JVM Memory Used"
           subtitle="jvm_memory_used_bytes"
+          :is-dark="isDark"
         />
 
-        <MetricsChart :series="cpuSeries" format="ratio" title="Process CPU Usage" subtitle="process_cpu_usage" />
+        <MetricsChart :series="cpuSeries" format="ratio" title="Process CPU Usage" subtitle="process_cpu_usage" :is-dark="isDark" />
 
-        <div class="rounded-lg border border-[#2c3235] bg-[#181b1f] overflow-hidden">
-          <div class="flex items-center gap-2 px-3 py-1.5 border-b border-[#2c3235]">
-            <p class="text-[12px] font-semibold text-zinc-200 truncate">Custom metric</p>
-            <p v-if="customMetric" class="text-[10px] font-mono text-zinc-500 truncate hidden sm:block">{{ customMetric }}</p>
+        <div class="rounded-lg border overflow-hidden" :class="isDark ? 'border-[#2c3235] bg-[#181b1f]' : 'border-gray-200 bg-white'">
+          <div class="flex items-center gap-2 px-3 py-1.5 border-b" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
+            <p class="text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-200' : 'text-gray-800'">Custom metric</p>
+            <p v-if="customMetric" class="text-[10px] font-mono truncate hidden sm:block" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">{{ customMetric }}</p>
             <select
               v-model="customMetric"
-              class="ml-auto shrink-0 text-[10px] rounded border border-[#41474d] bg-[#22252b] text-zinc-300 px-1.5 py-1 outline-none focus:border-[#3d71d9] max-w-60"
+              class="ml-auto shrink-0 text-[10px] rounded border px-1.5 py-1 outline-none focus:border-[#3d71d9] max-w-60"
+              :class="isDark ? 'border-[#41474d] bg-[#22252b] text-zinc-300' : 'border-gray-200 bg-gray-50 text-gray-600'"
             >
               <option value="" disabled>— pilih metrik —</option>
               <option v-for="n in metricNames" :key="n" :value="n">{{ n }}</option>
             </select>
           </div>
           <div class="p-2">
-            <MetricsChart v-if="customMetric" :series="customSeries" />
-            <p v-else class="text-[10px] text-zinc-500 p-2">Pilih metrik dari dropdown untuk melihat grafiknya.</p>
+            <MetricsChart v-if="customMetric" :series="customSeries" :is-dark="isDark" />
+            <p v-else class="text-[10px] p-2" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">Pilih metrik dari dropdown untuk melihat grafiknya.</p>
           </div>
         </div>
       </main>
@@ -145,7 +147,7 @@
       @click="askOpen = true"
       class="fixed right-4 top-4 z-40 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-md transition bg-white border border-gray-200 text-gray-600 hover:text-[#0f8cd5] hover:border-[#0f8cd5]"
     >
-      <SparklesIcon :size="13" />
+      <GemonoIcon :size="14" class="rounded-sm" />
       Ask Gemono
     </button>
 
@@ -154,7 +156,7 @@
       class="fixed right-4 top-4 z-40 w-80 max-h-[70vh] rounded-lg border border-gray-200 bg-white shadow-xl flex flex-col"
     >
       <div class="flex items-center gap-1.5 px-3 py-2 border-b border-gray-100 shrink-0">
-        <SparklesIcon :size="13" class="text-[#0f8cd5]" />
+        <GemonoIcon :size="14" class="rounded-sm text-[#0f8cd5]" />
         <p class="text-xs font-semibold">Ask Gemono — metric explained</p>
         <button @click="askOpen = false" class="ml-auto text-gray-400 hover:text-gray-700 transition">
           <CloseIcon :size="13" />
@@ -223,7 +225,6 @@ import TrendingUpIcon from '@/components/icons/TrendingUpIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
 import LogOutIcon from '@/components/icons/LogOutIcon.vue'
-import SparklesIcon from '@/components/icons/SparklesIcon.vue'
 import CloseIcon from '@/components/icons/CloseIcon.vue'
 import SendIcon from '@/components/icons/SendIcon.vue'
 
