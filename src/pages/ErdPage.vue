@@ -571,6 +571,7 @@ import HomeIcon from '@/components/icons/HomeIcon.vue'
 import GemonoIcon from '@/components/icons/GemonoIcon.vue'
 import DatabaseIcon from '@/components/icons/DatabaseIcon.vue'
 import TerminalIcon from '@/components/icons/TerminalIcon.vue'
+import TrendingUpIcon from '@/components/icons/TrendingUpIcon.vue'
 import ChevronLeftIcon from '@/components/icons/ChevronLeftIcon.vue'
 import MenuIcon from '@/components/icons/MenuIcon.vue'
 import LogOutIcon from '@/components/icons/LogOutIcon.vue'
@@ -612,6 +613,7 @@ const navItems = [
   { name: 'Gemono', routeName: 'agent', to: '/agent', icon: GemonoIcon },
   { name: 'ERD', routeName: 'erd', to: '/erd', icon: DatabaseIcon },
   { name: 'Log', routeName: 'log', to: '/log', icon: TerminalIcon },
+  { name: 'Metrics', routeName: 'metrics', to: '/metrics', icon: TrendingUpIcon },
 ]
 
 const userInitial = computed(() => {
