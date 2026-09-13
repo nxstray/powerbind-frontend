@@ -257,16 +257,14 @@
               class="shrink-0 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-md"
               :class="isDark ? 'bg-white/10 text-zinc-300' : 'bg-white/25'"
             >{{ explainKind(explain.col) }}</span>
-            <AppTooltip text="Tutup" position="bottom">
-              <button
-                @mousedown.stop
-                @click="closeExplain"
-                class="shrink-0 cursor-pointer transition hover:text-white"
-                :class="isDark ? 'text-zinc-400' : 'text-white/70'"
-              >
-                <CloseIcon :size="14" />
-              </button>
-            </AppTooltip>
+            <button
+              @mousedown.stop
+              @click="closeExplain"
+              class="shrink-0 cursor-pointer transition hover:text-white"
+              :class="isDark ? 'text-zinc-400' : 'text-white/70'"
+            >
+              <CloseIcon :size="14" />
+            </button>
           </div>
 
           <div
