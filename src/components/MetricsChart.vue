@@ -1,9 +1,9 @@
 <template>
-  <!-- Grafana Graph panel — gelap permanen: title kiri + draw-mode selector kanan -->
-  <div class="rounded-lg border border-[#2c3235] bg-[#181b1f] overflow-hidden">
-    <div class="flex items-center gap-2 px-3 py-1.5 border-b border-[#2c3235]">
-      <p class="text-[12px] font-semibold text-zinc-200 truncate">{{ title || 'Graph' }}</p>
-      <p v-if="subtitle" class="text-[10px] font-mono text-zinc-500 truncate hidden sm:block">{{ subtitle }}</p>
+  <!-- Grafana Graph panel — warna mengikuti tema halaman (gelap ala Grafana saat malam) -->
+  <div class="rounded-lg border overflow-hidden" :class="isDark ? 'border-[#2c3235] bg-[#181b1f]' : 'border-gray-200 bg-white'">
+    <div class="flex items-center gap-2 px-3 py-1.5 border-b" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
+      <p class="text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-200' : 'text-gray-800'">{{ title || 'Graph' }}</p>
+      <p v-if="subtitle" class="text-[10px] font-mono truncate hidden sm:block" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">{{ subtitle }}</p>
     </div>
 
     <div class="relative px-2 pt-2">
@@ -44,7 +44,8 @@
         <span
           v-for="(g, i) in gridLines"
           :key="'t' + i"
-          class="absolute left-0 w-[5.4%] pr-0.5 text-right text-[10px] font-mono text-zinc-500"
+          class="absolute left-0 w-[5.4%] pr-0.5 text-right text-[10px] font-mono"
+          :class="isDark ? 'text-zinc-500' : 'text-gray-500'"
           :style="{ top: g.y + 'px', transform: 'translateY(-50%)' }"
         >
           {{ g.label }}
@@ -54,7 +55,8 @@
       <!-- Tooltip: precise timestamp + per-series values at the hovered instant -->
       <div
         v-if="hoverX !== null"
-        class="absolute z-10 pointer-events-none rounded-md border px-2.5 py-1.5 text-[11px] shadow-lg bg-zinc-800 border-zinc-700 text-zinc-200"
+        class="absolute z-10 pointer-events-none rounded-md border px-2.5 py-1.5 text-[11px] shadow-lg"
+        :class="isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200' : 'bg-white border-gray-200 text-gray-700'"
         :style="tooltipStyle"
       >
         <p class="font-medium mb-1 opacity-70 whitespace-nowrap">{{ hoverTimeLabel }}</p>
@@ -68,17 +70,17 @@
       <!-- X tick labels -->
       <div
         class="flex justify-between text-[9.5px] mt-1 pb-1"
-        :style="{ paddingLeft: PAD_L + 'px', color: 'rgba(255,255,255,0.3)' }"
+        :style="{ paddingLeft: PAD_L + 'px', color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)' }"
       >
         <span v-for="(t, i) in xTicks" :key="i">{{ t }}</span>
       </div>
     </div>
 
     <!-- Legend — satu baris per series: dash warna + label lengkap (Grafana) -->
-    <div v-if="visibleSeries.length" class="custom-scroll max-h-30 overflow-y-auto px-3 py-2 space-y-1 border-t border-[#2c3235]">
+    <div v-if="visibleSeries.length" class="custom-scroll max-h-30 overflow-y-auto px-3 py-2 space-y-1 border-t" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
       <div v-for="(s, i) in visibleSeries" :key="s.name" class="flex items-center gap-2 text-[10px] min-w-0">
         <span class="w-4 h-0.5 rounded-full shrink-0" :style="{ background: lineColor(i) }" />
-        <span class="text-zinc-300 truncate">{{ s.name }}</span>
+        <span class="truncate" :class="isDark ? 'text-zinc-300' : 'text-gray-600'">{{ s.name }}</span>
       </div>
     </div>
   </div>
@@ -95,7 +97,7 @@ const PAD_L = 40 // ruang untuk angka Y di sebelah kiri
 
 const props = defineProps({
   series: { type: Array, default: () => [] }, // [{ name, points: [{ t, v }] }]
-  isDark: { type: Boolean, default: false }, // kompatibilitas API — panel sekarang permanen gelap (Grafana)
+  isDark: { type: Boolean, default: false }, // panel mengikuti tema halaman (gelap ala Grafana saat malam)
   // 'bytes' | 'ratio' | 'number' — memilih format angka tooltip/legend
   format: { type: String, default: 'number' },
   // header panel: title kiri, subtitle (query) di sebelah kanannya
@@ -117,10 +119,10 @@ const hoverY = ref(null)
 
 const visibleSeries = computed(() => props.series.filter((s) => s.points?.length))
 
-// Grid vertikal — stroke sedikit lebih tegas agar jelas terlihat
-const gridStroke = 'rgba(255,255,255,0.22)'
-const vGridStroke = 'rgba(255,255,255,0.3)'
-const crossStroke = 'rgba(255,255,255,0.5)'
+// Warna grid mengikuti tema — putih-transparan di panel gelap, hitam-transparan di panel terang
+const gridStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.12)'))
+const vGridStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.16)'))
+const crossStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'))
 
 // Gridline vertikal — lebih rapat dari sebelumnya (12 lines) supaya kotak grid
 // terlihat lebih padat seperti panel Grafana asli.
