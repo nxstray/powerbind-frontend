@@ -75,7 +75,7 @@
           <MenuIcon :size="20" />
         </button>
         <h1 class="text-lg font-bold" :class="isDark ? 'text-white' : 'text-gray-800'">System Metrics</h1>
-        <span v-if="lastUpdated" class="text-[10px]" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">updated {{ lastUpdated }}</span>
+        <span v-if="lastUpdated" class="text-[10px] relative top-1" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">updated {{ lastUpdated }}</span>
 
         <!-- Range dropdown -->
         <div class="relative ml-auto mr-36" data-range-dd>
@@ -109,63 +109,57 @@
       <main class="custom-scroll flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-6 space-y-3">
         <div v-if="error" class="rounded-md border border-red-200 bg-red-50 text-red-600 text-xs px-3 py-2">{{ error }}</div>
 
-        <!-- Panels Grafana — dark card permanen dengan header title + query -->
-        <MetricsChart
-          :series="memorySeries"
-          format="bytes"
-          title="JVM Memory Used"
-          subtitle="jvm_memory_used_bytes"
-          :is-dark="isDark"
-        />
+        <!-- Dua container saja: memory (tetap) + metric explorer (dropdown + search) -->
+        <MetricsChart :series="memorySeries" format="bytes" title="jvm_memory_used_bytes" :is-dark="isDark" />
 
-        <MetricsChart :series="cpuSeries" format="ratio" title="Process CPU Usage" subtitle="process_cpu_usage" :is-dark="isDark" />
-
-        <div class="rounded-lg border overflow-hidden" :class="isDark ? 'border-[#2c3235] bg-[#181b1f]' : 'border-gray-200 bg-white'">
-          <div class="flex items-center gap-2 px-3 py-1.5 border-b" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
-            <p class="text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-200' : 'text-gray-800'">Custom metric</p>
-            <p v-if="customMetric" class="text-[10px] font-mono truncate hidden sm:block" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">{{ customMetric }}</p>
-            <div class="relative ml-auto" data-metric-dd>
+        <MetricsChart :series="cpuSeries" format="ratio" :title="selectedMetric" :is-dark="isDark">
+          <template #actions>
+            <div class="relative" data-metric-dd>
               <button
                 @click="metricOpen = !metricOpen"
                 class="flex items-center gap-1.5 text-[10px] font-medium rounded border px-2 py-1 transition max-w-60"
                 :class="isDark ? 'border-[#41474d] bg-[#22252b] text-zinc-300 hover:border-zinc-500' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-[#0f8cd5]'"
               >
-                <span class="truncate">{{ customMetric || '— pilih metrik —' }}</span>
+                <span class="truncate">{{ selectedMetric }}</span>
                 <ChevronLeftIcon :size="11" :class="metricOpen ? 'rotate-90' : '-rotate-90'" class="transition-transform shrink-0" />
               </button>
               <div
                 v-if="metricOpen"
-                class="absolute right-0 top-full mt-1 w-64 rounded-md shadow-lg z-10 overflow-hidden border"
+                class="absolute right-0 top-full mt-1 w-72 rounded-md shadow-lg z-10 overflow-hidden border"
                 :class="isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-100'"
               >
-                <div class="max-h-60 overflow-y-auto custom-scroll">
+                <div class="p-1.5 border-b" :class="isDark ? 'border-zinc-700' : 'border-gray-100'">
+                  <input
+                    v-model="metricSearch"
+                    placeholder="Cari metrik…"
+                    class="w-full text-[10px] rounded border px-2 py-1 outline-none"
+                    :class="isDark ? 'border-zinc-600 bg-zinc-900/60 text-zinc-200 placeholder-zinc-500 focus:border-zinc-400' : 'border-gray-200 bg-gray-50 text-gray-700 placeholder-gray-400 focus:border-[#0f8cd5]'"
+                  />
+                </div>
+                <div class="max-h-52 overflow-y-auto custom-scroll">
                   <button
-                    v-for="n in metricNames"
+                    v-for="n in filteredMetrics"
                     :key="n"
                     @click="selectMetric(n)"
                     class="w-full text-left px-3 py-1.5 text-[10px] font-mono transition"
-                    :class="customMetric === n ? (isDark ? 'bg-white/10 text-white' : 'bg-[#0f8cd5]/10 text-[#0f8cd5]') : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50')"
+                    :class="selectedMetric === n ? (isDark ? 'bg-white/10 text-white' : 'bg-[#0f8cd5]/10 text-[#0f8cd5]') : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50')"
                   >
                     {{ n }}
                   </button>
-                  <p v-if="!metricNames.length" class="px-3 py-2 text-[10px]" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">Daftar metrik kosong.</p>
+                  <p v-if="!filteredMetrics.length" class="px-3 py-2 text-[10px]" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">Tidak ada metrik yang cocok.</p>
                 </div>
               </div>
             </div>
-          </div>
-          <div class="p-2">
-            <MetricsChart v-if="customMetric" :series="customSeries" :is-dark="isDark" />
-            <p v-else class="text-[10px] p-2" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">Pilih metrik dari dropdown untuk melihat grafiknya.</p>
-          </div>
-        </div>
+          </template>
+        </MetricsChart>
       </main>
 
-      <!-- Agent overlay — absolute dalam kolom supaya rata dengan container chart
-           (right-6 = sama dengan px-6 area chart) dan tetap diam saat chart scroll -->
+      <!-- Agent overlay — absolute within the column so it aligns with the chart
+           container (right-6 = same as the chart's px-6) and stays put while the chart scrolls -->
       <button
         v-if="!askOpen"
         @click="askOpen = true"
-        class="absolute right-9 top-4 z-40 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-md transition bg-white border border-gray-200 text-gray-600 hover:text-[#0f8cd5] hover:border-[#0f8cd5]"
+        class="absolute right-9 top-4 z-40 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium shadow-md transition bg-white border border-gray-200 text-gray-600 hover:text-[#0f8cd5] hover:border-[#0f8cd5]"
       >
         <GemonoIcon :size="14" variant="dark" class="rounded-sm" />
         Ask Gemono
@@ -249,8 +243,8 @@ import LogOutIcon from '@/components/icons/LogOutIcon.vue'
 import CloseIcon from '@/components/icons/CloseIcon.vue'
 import SendIcon from '@/components/icons/SendIcon.vue'
 
-// Polling 30 detik — Prometheus sendiri scrape 15s, lebih cepat dari itu
-// tidak ada data baru. Interval dibersihkan di onUnmounted (pola SSE AgentPage).
+// 30s polling — Prometheus itself scrapes every 15s; polling faster than that
+// yields no new data. Interval is cleared in onUnmounted (AgentPage SSE pattern).
 const POLL_MS = 30_000
 const DEFAULT_METRIC = 'jvm_memory_used_bytes'
 const CPU_METRIC = 'process_cpu_usage'
@@ -261,17 +255,25 @@ const rangeOptions = [
   { label: 'Last 24 hours', value: 24 },
 ]
 const hours = ref(1)
-const stepFor = (h) => (h === 1 ? 60 : h === 6 ? 240 : 900) // ~240 titik per chart
+const stepFor = (h) => (h === 1 ? 60 : h === 6 ? 240 : 900) // ~240 points per chart
 
 const memorySeries = ref([])
 const cpuSeries = ref([])
-const customSeries = ref([])
 const metricNames = ref([])
-const customMetric = ref('')
+const metricSearch = ref('')
 const error = ref(null)
 const lastUpdated = ref('')
 const rangeOpen = ref(false)
 const metricOpen = ref(false)
+
+// Second container = metric explorer — displays any metric from the dropdown
+// (default: process_cpu_usage). The dropdown search filters this list.
+const selectedMetric = ref(CPU_METRIC)
+
+const filteredMetrics = computed(() => {
+  const q = metricSearch.value.trim().toLowerCase()
+  return q ? metricNames.value.filter((n) => n.toLowerCase().includes(q)) : metricNames.value
+})
 
 function selectRange(v) {
   hours.value = v
@@ -280,8 +282,9 @@ function selectRange(v) {
 }
 
 function selectMetric(n) {
-  customMetric.value = n
+  selectedMetric.value = n
   metricOpen.value = false
+  metricSearch.value = ''
   fetchAll()
 }
 
@@ -293,15 +296,12 @@ async function fetchChart(metric, groupBy, agg) {
 
 async function fetchAll() {
   try {
-    const [mem, cpu] = await Promise.all([
+    const [mem, sel] = await Promise.all([
       fetchChart(DEFAULT_METRIC, null, 'sum'),
-      fetchChart(CPU_METRIC, null, 'avg'),
+      fetchChart(selectedMetric.value, null, 'avg'),
     ])
     memorySeries.value = mem.series
-    cpuSeries.value = cpu.series
-    if (customMetric.value) {
-      customSeries.value = (await fetchChart(customMetric.value, null, 'avg')).series
-    }
+    cpuSeries.value = sel.series
     error.value = null
     lastUpdated.value = new Date().toLocaleTimeString()
   } catch (e) {
@@ -312,7 +312,7 @@ async function fetchAll() {
 async function fetchNames() {
   try {
     const names = await metricsService.getNames()
-    // Filter ke metrik runtime yang relevan — dropdown tidak jadi daftar 1000+ nama
+    // Filter to relevant runtime metrics — the dropdown doesn't become a list of 1000+ names
     metricNames.value = names.filter(
       (n) =>
         /^(jvm_|process_|http_|system_|logback_|executor_)/.test(n) &&
@@ -324,7 +324,7 @@ async function fetchNames() {
   }
 }
 
-// ---- Sidebar (pola sama dengan LogPage) ---------------------------------------
+// ---- Sidebar (same pattern as LogPage) ---------------------------------------
 const router = useRouter()
 const authStore = useAuthStore()
 const sidebarCollapsed = ref(false)
@@ -358,9 +358,9 @@ function cancelLogout() {
   logoutConfirm.value = { open: false, loading: false }
 }
 
-// ---- automatic weather/time theme — thresholds & palet identik dengan DashboardPage
-// (hujan → abu, malam → navy gelap, 15–18 → oren sore, sisanya → biru default).
-// accentColor ikut diset supaya custom-scroll di main.css mengikuti tema. -----------
+// ---- automatic weather/time theme — thresholds & palette identical to DashboardPage
+// (rain → gray, night → dark navy, 15–18 → orange afternoon, otherwise → default blue).
+// accentColor is also set so the custom-scroll in main.css follows the theme. -----------
 const themeClass = ref('bg-[#f0f2f5]')
 const sidebarColor = ref('from-[#0f8cd5]')
 const accentColor = ref('#0f8cd5')
@@ -398,7 +398,7 @@ async function fetchWeather() {
   }
 }
 
-// ---- Overlay Q&A (ephemeral — tidak masuk riwayat AgentPage) ----
+// ---- Q&A overlay (ephemeral — not stored in the AgentPage history) ----
 const askOpen = ref(false)
 const askInput = ref('')
 const askStreaming = ref(false)
@@ -432,7 +432,7 @@ function sendAsk() {
   )
 }
 
-// Tutup dropdown range & metrik saat klik di luar (trigger + panel ditandai data-*-dd)
+// Close the range & metric dropdowns on outside click (trigger + panel marked data-*-dd)
 function onGlobalClick(e) {
   if (!rangeOpen.value && !metricOpen.value) return
   if (e.target.closest && e.target.closest('[data-range-dd]')) return
