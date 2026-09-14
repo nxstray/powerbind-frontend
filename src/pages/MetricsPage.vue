@@ -78,7 +78,7 @@
         <span v-if="lastUpdated" class="text-[10px] relative top-1" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">updated {{ lastUpdated }}</span>
 
         <!-- Range dropdown -->
-        <div class="relative ml-auto mr-36" data-range-dd>
+        <div class="relative ml-auto" data-range-dd>
           <button
             @click="rangeOpen = !rangeOpen"
             class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
@@ -103,14 +103,31 @@
             </button>
           </div>
         </div>
+
+        <!-- Ask Gemono trigger — stays visible on the header row, aligned with the
+             hour dropdown; acts as an open/close toggle (flush to the window edge) -->
+        <button
+          @click="askOpen = !askOpen"
+          class="flex items-center gap-1.5 rounded-l-lg border border-r-0 px-3 py-1.5 -mr-4 sm:-mr-6 text-xs font-semibold shadow-lg transition-colors cursor-pointer"
+          :class="[
+            askOpen
+              ? (isDark ? 'bg-zinc-800 text-zinc-100 border-white/10' : 'bg-white text-slate-700 border-gray-200')
+              : (isDark ? 'bg-zinc-800 text-amber-400 border-white/10 hover:bg-zinc-700' : 'bg-amber-400 text-slate-800 border-gray-200 hover:bg-amber-300'),
+          ]"
+        >
+          <GemonoIcon :size="14" variant="white" class="rounded-sm" />
+          Ask Gemono
+        </button>
       </div>
 
-      <!-- Charts — scroll internal dengan custom-scroll (warna thumb mengikuti --accent-color tema) -->
-      <main class="custom-scroll flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-6 space-y-3">
+      <!-- Charts + Ask Gemono side panel — the panel slides in from the right edge
+           and PUSHES the chart container (ErdPage data-panel pattern, horizontal) -->
+      <div class="flex-1 flex min-h-0 overflow-hidden">
+        <main class="custom-scroll flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 pb-6 space-y-3">
         <div v-if="error" class="rounded-md border border-red-200 bg-red-50 text-red-600 text-xs px-3 py-2">{{ error }}</div>
 
-        <!-- Dua container saja: memory (tetap) + metric explorer (dropdown + search) -->
-        <MetricsChart :series="memorySeries" format="bytes" title="jvm_memory_used_bytes" :is-dark="isDark" />
+        <!-- Two containers only: memory (fixed) + metric explorer (dropdown + search) -->
+        <MetricsChart :series="memorySeries" format="bytes" title="jvm_memory_used_bytes" :is-dark="isDark" hide-legend-scrollbar />
 
         <MetricsChart :series="cpuSeries" format="ratio" :title="selectedMetric" :is-dark="isDark">
           <template #actions>
@@ -154,55 +171,52 @@
         </MetricsChart>
       </main>
 
-      <!-- Agent overlay — absolute within the column so it aligns with the chart
-           container (right-6 = same as the chart's px-6) and stays put while the chart scrolls -->
-      <button
-        v-if="!askOpen"
-        @click="askOpen = true"
-        class="absolute right-9 top-4 z-40 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium shadow-md transition bg-white border border-gray-200 text-gray-600 hover:text-[#0f8cd5] hover:border-[#0f8cd5]"
-      >
-        <GemonoIcon :size="14" variant="dark" class="rounded-sm" />
-        Ask Gemono
-      </button>
-
-      <div
-        v-if="askOpen"
-        class="absolute right-9 top-4 z-40 w-80 max-h-[70vh] rounded-lg border border-gray-200 bg-white shadow-xl flex flex-col"
-      >
-        <div class="flex items-center gap-1.5 px-3 py-2 border-b border-gray-100 shrink-0">
-          <GemonoIcon :size="14" variant="dark" class="rounded-sm" />
-          <p class="text-xs font-semibold">Ask Gemono — metric explained</p>
-          <button @click="askOpen = false" class="ml-auto text-gray-400 hover:text-gray-700 transition">
-            <CloseIcon :size="13" />
-          </button>
-        </div>
-
-        <div class="flex-1 overflow-y-auto custom-scroll px-3 py-2.5 text-xs space-y-2">
-          <template v-if="askMessages.length">
-            <div v-for="(m, i) in askMessages" :key="i" :class="m.role === 'user' ? 'text-right' : ''">
-              <p
-                v-if="m.role === 'user'"
-                class="inline-block rounded-lg bg-[#0f8cd5] text-white px-2.5 py-1.5 text-left max-w-[85%]"
-              >{{ m.content }}</p>
-              <div v-else class="text-left">
-                <MarkdownRenderer :content="m.content" />
-                <span v-if="m.streaming" class="inline-block w-1.5 h-3 bg-[#0f8cd5] animate-pulse align-text-bottom" />
-              </div>
+        <!-- Ask Gemono side panel — width animates 0 -> 320px, pushing the charts left -->
+        <aside
+          class="relative shrink-0 h-full overflow-hidden transition-[width] duration-300 ease-out border-l"
+          :class="askOpen
+            ? (isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200')
+            : 'border-transparent'"
+          :style="{ width: askOpen ? '320px' : '0px' }"
+        >
+          <div class="flex h-full w-80 flex-col">
+            <div class="flex items-center gap-1.5 px-3 py-2 border-b shrink-0" :class="isDark ? 'border-white/10' : 'border-gray-100'">
+              <GemonoIcon :size="14" :variant="isDark ? 'white' : 'dark'" class="rounded-sm" />
+              <p class="text-xs font-semibold" :class="isDark ? 'text-zinc-100' : 'text-gray-800'">Ask Gemono — metric explained</p>
+              <button @click="askOpen = false" class="ml-auto p-0.5 rounded transition" :class="isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'">
+                <CloseIcon :size="13" />
+              </button>
             </div>
-          </template>
-          <p v-else class="text-gray-400 text-[11px]">Tanyakan apa arti grafik di halaman ini.</p>
-        </div>
 
-        <form @submit.prevent="sendAsk" class="flex items-center gap-1.5 px-3 py-2 border-t border-gray-100 shrink-0">
-          <input
-            v-model="askInput"
-            placeholder="Explain the memory chart…"
-            class="flex-1 text-xs rounded-md border border-gray-200 px-2 py-1.5 outline-none focus:border-[#0f8cd5]"
-          />
-          <button type="submit" :disabled="!askInput.trim() || askStreaming" class="text-[#0f8cd5] disabled:opacity-30">
-            <SendIcon :size="14" />
-          </button>
-        </form>
+            <div class="flex-1 overflow-y-auto custom-scroll px-3 py-2.5 text-xs space-y-2" :class="isDark ? 'text-zinc-300' : 'text-gray-700'">
+              <template v-if="askMessages.length">
+                <div v-for="(m, i) in askMessages" :key="i" :class="m.role === 'user' ? 'text-right' : ''">
+                  <p
+                    v-if="m.role === 'user'"
+                    class="inline-block rounded-lg bg-[#0f8cd5] text-white px-2.5 py-1.5 text-left max-w-[85%]"
+                  >{{ m.content }}</p>
+                  <div v-else class="text-left">
+                    <MarkdownRenderer :content="m.content" />
+                    <span v-if="m.streaming" class="inline-block w-1.5 h-3 bg-[#0f8cd5] animate-pulse align-text-bottom" />
+                  </div>
+                </div>
+              </template>
+              <p v-else :class="isDark ? 'text-zinc-500' : 'text-gray-400'" class="text-[11px]">Tanyakan apa arti grafik di halaman ini.</p>
+            </div>
+
+            <form @submit.prevent="sendAsk" class="flex items-center gap-1.5 px-3 py-2 border-t shrink-0" :class="isDark ? 'border-white/10' : 'border-gray-100'">
+              <input
+                v-model="askInput"
+                placeholder="Explain the memory chart…"
+                class="flex-1 text-xs rounded-md border px-2 py-1.5 outline-none focus:border-[#0f8cd5]"
+                :class="isDark ? 'border-zinc-600 bg-zinc-900/60 text-zinc-200 placeholder-zinc-500' : 'border-gray-200 bg-white text-gray-700 placeholder-gray-400'"
+              />
+              <button type="submit" :disabled="!askInput.trim() || askStreaming" class="text-[#0f8cd5] disabled:opacity-30">
+                <SendIcon :size="14" />
+              </button>
+            </form>
+          </div>
+        </aside>
       </div>
     </div>
 
