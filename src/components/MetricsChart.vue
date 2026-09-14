@@ -1,9 +1,12 @@
 <template>
-  <!-- Grafana Graph panel — warna mengikuti tema halaman (gelap ala Grafana saat malam) -->
+  <!-- Grafana Graph panel — colors follow the page theme (Grafana-style dark at night) -->
   <div class="rounded-lg border overflow-hidden" :class="isDark ? 'border-[#2c3235] bg-[#181b1f]' : 'border-gray-200 bg-white'">
     <div class="flex items-center gap-2 px-3 py-1.5 border-b" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
       <p class="text-[12px] font-semibold truncate" :class="isDark ? 'text-zinc-200' : 'text-gray-800'">{{ title || 'Graph' }}</p>
       <p v-if="subtitle" class="text-[10px] font-mono truncate hidden sm:block" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">{{ subtitle }}</p>
+      <div v-if="$slots.actions" class="ml-auto flex items-center shrink-0">
+        <slot name="actions" />
+      </div>
     </div>
 
     <div class="relative px-2 pt-2">
@@ -16,11 +19,11 @@
         @mousemove="onMouseMove"
         @mouseleave="hoverX = null; hoverY = null"
       >
-        <!-- Grid solid — horizontal + vertikal (digaris bawahi biar jelas) -->
+        <!-- Solid grid — horizontal + vertical (underlined for clarity) -->
         <line v-for="(g, i) in gridLines" :key="'g' + i" :x1="PAD_L" :x2="W" :y1="g.y" :y2="g.y" :stroke="gridStroke" />
         <line v-for="(v, i) in vGridX" :key="'v' + i" :x1="v" :x2="v" :y1="0" :y2="PLOT_H" :stroke="vGridStroke" />
 
-        <!-- Series lines — hanya series yang digambar (bisa difokus dari legend) -->
+        <!-- Series lines — only drawn series (focusable from the legend) -->
         <polyline
           v-for="x in drawnSeries"
           :key="'l' + x.i"
@@ -37,9 +40,9 @@
         <line v-if="hoverY !== null" :x1="PAD_L" :x2="W" :y1="hoverY" :y2="hoverY" :stroke="crossStroke" stroke-width="1" stroke-dasharray="3,3" />
       </svg>
 
-      <!-- Y tick labels — HTML overlay (bukan <text> SVG) supaya font tidak ikut
-           ter-stretch horizontal oleh preserveAspectRatio="none", dan label teratas
-           tidak terpotong (translateY(-50%) boleh keluar sedikit dari box). -->
+      <!-- Y tick labels — HTML overlay (not SVG <text>) so the font isn't
+           stretched horizontally by preserveAspectRatio="none", and the top label
+           isn't clipped (translateY(-50%) may extend slightly outside the box). -->
       <div class="absolute inset-0 pointer-events-none">
         <span
           v-for="(g, i) in gridLines"
@@ -67,8 +70,8 @@
         </div>
       </div>
 
-        <!-- X tick labels — sejajar garis vertikal (setiap 15 menit). Kalau garis
-             terlalu rapat (range 6/24 jam), label hanya tiap garis ke-n. -->
+        <!-- X tick labels — aligned with the vertical lines (every 15 minutes). If the
+             lines get too dense (6/24h range), label only every n-th line. -->
         <div class="relative h-4 mt-0.5" :style="{ color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)' }">
           <span
             v-for="(t, i) in timeTicks"
@@ -80,8 +83,8 @@
         </div>
     </div>
 
-    <!-- Legend — satu baris per series: dash warna + label lengkap (Grafana).
-         Klik strip = fokus series itu saja; klik lagi = tampilkan semua. -->
+    <!-- Legend — one row per series: colored dash + full label (Grafana).
+         Click a strip to focus that series; click again to show all. -->
     <div v-if="visibleSeries.length" class="custom-scroll max-h-30 overflow-y-auto px-3 py-2 space-y-1 border-t" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
       <div
         v-for="(s, i) in visibleSeries"
@@ -100,23 +103,23 @@
 <script setup>
 import { ref, computed } from 'vue'
 
-// Layout mirip LogsVolumeChart, plus left gutter untuk Y tick labels
+// Layout similar to LogsVolumeChart, plus a left gutter for Y tick labels
 const W = 720
 const H = 170
 const PLOT_H = 140
-const PAD_L = 40 // ruang untuk angka Y di sebelah kiri
+const PAD_L = 40 // room for the Y numbers on the left
 
 const props = defineProps({
   series: { type: Array, default: () => [] }, // [{ name, points: [{ t, v }] }]
-  isDark: { type: Boolean, default: false }, // panel mengikuti tema halaman (gelap ala Grafana saat malam)
-  // 'bytes' | 'ratio' | 'number' — memilih format angka tooltip/legend
+  isDark: { type: Boolean, default: false }, // panel follows the page theme (Grafana-style dark at night)
+  // 'bytes' | 'ratio' | 'number' — picks the tooltip/legend number format
   format: { type: String, default: 'number' },
-  // header panel: title kiri, subtitle (query) di sebelah kanannya
+  // header panel: title on the left, subtitle (query) to its right
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
 })
 
-// Palet Grafana — urutan warna sama dengan legend di gambar
+// Grafana palette — color order matches the legend in the picture
 const COLORS = ['#73BF69', '#F2CC0C', '#5794F2', '#FF9830', '#F2495C', '#B877D9', '#37872D', '#FADE2A', '#C15C17', '#E02F44', '#96D98D', '#FF7383']
 function lineColor(i) {
   return COLORS[i % COLORS.length]
@@ -130,8 +133,8 @@ const hoverY = ref(null)
 
 const visibleSeries = computed(() => props.series.filter((s) => s.points?.length))
 
-// Klik legend strip → fokus satu series (index asli dipertahankan supaya warnanya
-// tidak berubah); klik lagi → tampilkan semua.
+// Click a legend strip → focus one series (original index preserved so its
+// color doesn't change); click again → show all.
 const focusedSeries = ref(null)
 const drawnSeries = computed(() =>
   visibleSeries.value
@@ -139,13 +142,13 @@ const drawnSeries = computed(() =>
     .filter(({ i }) => focusedSeries.value === null || i === focusedSeries.value),
 )
 
-// Warna grid mengikuti tema — putih-transparan di panel gelap, hitam-transparan di panel terang
+// Grid colors follow the theme — translucent white on dark panels, translucent black on light panels
 const gridStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.12)'))
 const vGridStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.16)'))
 const crossStroke = computed(() => (props.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)'))
 
-// Gridline vertikal — setiap 15 menit, sejajar jam (09:45, 10:00, ...) seperti
-// Grafana. Label X dirender per garis ini (lihat template X tick labels).
+// Vertical gridlines — every 15 minutes, aligned to clock times (09:45, 10:00, ...)
+// like Grafana. X labels are rendered per line (see the X tick labels template).
 const V_STEP_MS = 15 * 60 * 1000
 const timeTicks = computed(() => {
   const { t0, t1 } = timeRange.value
@@ -155,7 +158,7 @@ const timeTicks = computed(() => {
 })
 const vGridX = computed(() => timeTicks.value.map((t) => xAt(t)))
 
-// Rentang waktu global dari semua series (untuk skala X & interpolasi tooltip)
+// Global time range across all series (for the X scale & tooltip interpolation)
 const timeRange = computed(() => {
   let t0 = Infinity
   let t1 = -Infinity
@@ -167,7 +170,7 @@ const timeRange = computed(() => {
   return { t0, t1: t1 > t0 ? t1 : t0 + 1 }
 })
 
-// Max global mentah dari data (baseline 0 — natural untuk memori/CPU/counter)
+// Raw global max from the data (baseline 0 — natural for memory/CPU/counter)
 const maxVal = computed(() => {
   let max = 0
   for (const s of visibleSeries.value) {
@@ -176,11 +179,11 @@ const maxVal = computed(() => {
   return max > 0 ? max : 1
 })
 
-// ---- Nice round-number ticks ala Grafana/D3 -----------------------------------
-// Supaya gridline jatuh di angka bulat (0, 25 Mil, 50 Mil, 75 Mil, 100 Mil...)
-// alih-alih persentase mentah dari nilai max aktual.
-// Termasuk pecahan "2.5" (selain 1/2/5/10) supaya bisa jatuh di kelipatan
-// 25 (2.5 × 10^n) seperti 25 Mil/50 Mil/... ala Grafana, bukan cuma 20/50.
+// ---- Nice round-number ticks Grafana/D3 style -----------------------------------
+// So gridlines land on round numbers (0, 25 Mil, 50 Mil, 75 Mil, 100 Mil...)
+// instead of raw percentages of the actual max value.
+// Includes the "2.5" fraction (besides 1/2/5/10) so ticks can land on multiples
+// of 25 (2.5 × 10^n) like 25 Mil/50 Mil/... Grafana-style, not just 20/50.
 function niceNum(range, round) {
   const exponent = Math.floor(Math.log10(range))
   const fraction = range / Math.pow(10, exponent)
@@ -211,14 +214,14 @@ function niceTicks(max, tickDivisions = 8) {
 
 const ticks = computed(() => niceTicks(maxVal.value, 8))
 
-// Skala Y dipakai bareng oleh gridline & plot titik (yAt), biar garis & data selaras
+// The Y scale is shared by gridlines & point plotting (yAt) so lines and data align
 const yScaleMax = computed(() => ticks.value.niceMax || maxVal.value)
 
-// Ruang cadangan di atas plot supaya label gridline paling atas (mis. "150 Mil")
-// tidak kepotong oleh border panel saat translateY(-50%) menariknya ke atas.
+// Reserved space above the plot so the topmost gridline label (e.g. "150 Mil")
+// isn't clipped by the panel border when translateY(-50%) pulls it upward.
 const TOP_PAD = 10
 
-// Gridline: dari 0 sampai niceMax, per step bulat — label ala Grafana ("150 Mil")
+// Gridlines: from 0 to niceMax, per round step — Grafana-style labels ("150 Mil")
 const gridLines = computed(() => {
   const { niceMax, step } = ticks.value
   const n = Math.max(1, Math.round(niceMax / step))
@@ -236,7 +239,7 @@ function fmtY(v) {
   return fmtGrafana(v)
 }
 
-// Format Y ala Grafana: "150 Mil" — unit bahasa Inggris, angka singkat
+// Grafana-style Y format: "150 Mil" — English unit, compact number
 function fmtGrafana(v) {
   if (v === 0) return '0'
   const a = Math.abs(v)
@@ -301,12 +304,12 @@ function onMouseMove(e) {
   hoverY.value = Math.min(yRatio * H, PLOT_H)
 }
 
-// Label X tiap garis vertikal; kalau tick terlalu rapat (range 6/24 jam),
-// tampilkan hanya tiap garis ke-n (maks ±13 label) biar tidak tabrakan.
+// X labels for each vertical line; if ticks get too dense (6/24h range),
+// show only every n-th line (max ±13 labels) to avoid collisions.
 const xLabelStep = computed(() => Math.max(1, Math.ceil(timeTicks.value.length / 13)))
 function xLabelStyle(t) {
   const pct = (xAt(t) / W) * 100
-  // Clamp di tepi kiri/kanan supaya label tidak terpotong border panel
+  // Clamp at the left/right edges so labels aren't clipped by the panel border
   const transform = pct < 4 ? 'translateX(0)' : pct > 96 ? 'translateX(-100%)' : 'translateX(-50%)'
   return { left: pct + '%', transform }
 }
@@ -317,7 +320,7 @@ function fmtTick(ms) {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// Timestamp presisi ala Grafana di tooltip
+// Grafana-style precise timestamp in the tooltip
 function fmtPrecise(ms) {
   const d = new Date(ms)
   const pad = (n, len = 2) => String(n).padStart(len, '0')
@@ -333,7 +336,7 @@ const hoverTimeMs = computed(() => {
 })
 const hoverTimeLabel = computed(() => (hoverTimeMs.value === null ? '' : fmtPrecise(hoverTimeMs.value)))
 
-// Nilai tiap series pada waktu hover — snap ke titik terdekat
+// Per-series value at hover time — snapped to the nearest point
 function fmtAt(s) {
   if (hoverTimeMs.value === null) return ''
   let best = s.points[0]
@@ -348,7 +351,7 @@ function fmtAt(s) {
   return fmtValue(best.v)
 }
 
-// Tooltip mengikuti crosshair dengan gap, flip ke kiri saat lewat tengah
+// Tooltip follows the crosshair with a gap, flipping left past the midpoint
 const tooltipStyle = computed(() => {
   if (hoverX.value === null) return {}
   const xPct = (hoverX.value / W) * 100
