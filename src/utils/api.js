@@ -19,17 +19,17 @@ api.interceptors.request.use((config) => {
 })
 
 // Handle errors and push to backend LogController
-// --- Silent refresh (401 → coba refresh sebelum logout) ---
-// Access token berumur 1 jam (jwt.expiration); refresh token 7 hari dan
-// ROTATING — response refresh berisi token pair BARU, jadi KEDUANYA harus
-// disimpan. Single-flight: concurrent 401 memakai satu refreshPromise yang
-// sama, jadi /api/auth/refresh hanya dipanggil sekali per ganti token.
+// --- Silent refresh (401 → try refresh before logout) ---
+// Access token lives 1 hour (jwt.expiration); refresh token is 7 days and
+// ROTATING — the refresh response contains a NEW token pair, so BOTH must
+// be stored. Single-flight: concurrent 401s share one refreshPromise,
+// so /api/auth/refresh is called only once per token rotation.
 let refreshPromise = null
 
-// URL yang tidak boleh trigger refresh-retry:
-// - login: 401 = password salah, bukan token expired
-// - refresh: kalau refresh-nya sendiri 401, jangan refresh lagi (infinite loop)
-// - logs: konsisten dengan aturan "jangan log ulang /api/logs"
+// URLs that must not trigger a refresh-retry:
+// - login: 401 = wrong password, not an expired token
+// - refresh: if the refresh itself 401s, don't refresh again (infinite loop)
+// - logs: consistent with the "never re-log /api/logs" rule
 function isRefreshExcluded(url) {
   return (
     !url ||
@@ -62,12 +62,12 @@ async function trySilentRefresh(originalError) {
     }
     const res = await refreshPromise
     const { accessToken, refreshToken: newRefreshToken } = res.data.data
-    // Simpan KEDUA token — refresh token lama sudah di-revoke backend
+    // Store BOTH tokens — the old refresh token has been revoked by the backend
     localStorage.setItem('accessToken', accessToken)
     localStorage.setItem('refreshToken', newRefreshToken)
     return accessToken
   } catch {
-    // Refresh token expired/habis → barulah benar-benar logout
+    // Refresh token expired/used up → only now do we truly log out
     clearSession()
     return Promise.reject(originalError)
   }
@@ -88,24 +88,24 @@ api.interceptors.response.use(
       api.post('/api/logs', { level: 'ERROR', message: msg }).catch(() => {})
     }
 
-    // 2. 401 → coba silent refresh SEKALI per request, lalu ulangi request asli
+    // 2. 401 → try a silent refresh ONCE per request, then replay the original request
     if (status === 401 && config && !isRefreshExcluded(config.url) && !config._retry) {
       config._retry = true
       try {
         const accessToken = await trySilentRefresh(error)
-        // Ulangi request asli — request interceptor akan menyematkan token
-        // terbaru dari localStorage, tapi tetap set di sini untuk keamanan.
+        // Replay the original request — the request interceptor will attach the
+        // latest token from localStorage, but set it here anyway for safety.
         config.headers = config.headers || {}
         config.headers.Authorization = `Bearer ${accessToken}`
         return api(config)
       } catch (e) {
-        // trySilentRefresh sudah clearSession (refresh gagal / token absen)
+        // trySilentRefresh already called clearSession (refresh failed / token missing)
         return Promise.reject(e)
       }
     }
 
-    // 3. 401 di endpoint auth/logs atau request yang sudah pernah di-retry —
-    //    perilaku lama: bersihkan token + redirect
+    // 3. 401 on auth/logs endpoints or a request that was already retried —
+    //    old behavior: clear tokens + redirect
     if (status === 401) {
       clearSession()
     }
