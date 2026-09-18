@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock axios sebelum import api.js supaya axios.create() mengembalikan instance
-// tiruan yang bisa kita intip interceptor-nya (tanpa request jaringan sungguhan).
-// Dibuat lewat vi.hoisted supaya objek yang SAMA dipakai oleh setiap evaluasi
-// factory vi.mock (module runner Vitest 5 bisa mengevaluasi factory lebih dari
-// sekali — tanpa ini, salinan axios di test dan di api.js bisa berbeda).
+// Mock axios before importing api.js so axios.create() returns a fake
+// instance whose interceptors we can spy on (no real network requests).
+// Created via vi.hoisted so the SAME object is used by every evaluation
+// of the vi.mock factory (Vitest 5's module runner may evaluate the factory more
+// than once — without this, the axios copy in the test and in api.js could differ).
 const { instance, axiosMock } = vi.hoisted(() => {
-  // Instance harus CALLABLE: interceptor refresh di api.js mengulang request
-  // asli lewat api(config) → memanggil instance(config) langsung.
+  // The instance must be CALLABLE: the refresh interceptor in api.js replays the
+  // original request via api(config) → calling instance(config) directly.
   const mockedInstance = Object.assign(vi.fn(), {
     interceptors: {
       request: { use: vi.fn() },
@@ -20,12 +20,12 @@ const { instance, axiosMock } = vi.hoisted(() => {
 
 vi.mock('axios', () => ({ default: axiosMock }))
 
-// Side-effect import: mengeksekusi modul api.js agar interceptor-nya
-// terdaftar — binding `api` sendiri tidak dipakai test (handler diintip
-// lewat mock instance).
+// Side-effect import: executes the api.js module so its interceptors get
+// registered — the `api` binding itself isn't used by the test (handlers are
+// spied on via the mock instance).
 import '@/utils/api'
 
-// Ambil handler interceptor yang terdaftar saat modul api.js dieksekusi.
+// Grab the interceptor handlers registered when the api.js module executed.
 const requestHandler = instance.interceptors.request.use.mock.calls[0][0]
 const responseHandler = instance.interceptors.response.use.mock.calls[0][0]
 const responseErrorHandler = instance.interceptors.response.use.mock.calls[0][1]
@@ -69,8 +69,8 @@ describe('response interceptor api.js', () => {
     instance.post.mockResolvedValue({})
     instance.mockReset()
     instance.mockResolvedValue({ data: { data: 'ok' } })
-    // Module-level state refreshPromise di api.js harus bersih antar test —
-    // cukup dengan mockReset di atas karena promise selesai di setiap test.
+    // Module-level refreshPromise state in api.js must be clean between tests —
+    // the mockReset above suffices since the promise settles in every test.
   })
 
   afterEach(() => {
@@ -148,14 +148,14 @@ describe('response interceptor api.js', () => {
 
     await responseErrorHandler(error)
 
-    // Refresh dipanggil dengan refreshToken lama
+    // Refresh called with the old refreshToken
     expect(instance.post).toHaveBeenCalledWith('/api/auth/refresh', {
       refreshToken: 'rt-lama',
     })
     // ROTATING: KEDUA token baru tersimpan
     expect(localStorage.getItem('accessToken')).toBe('at-baru')
     expect(localStorage.getItem('refreshToken')).toBe('rt-baru')
-    // Request asli diulang dengan token baru, tanpa redirect
+    // Original request replayed with the new token, no redirect
     expect(instance).toHaveBeenCalledWith(
       expect.objectContaining({ url: '/api/rooms' }),
     )
@@ -274,7 +274,7 @@ describe('response interceptor api.js', () => {
       ([url]) => url === '/api/auth/refresh',
     )
     expect(refreshCalls).toHaveLength(1)
-    // Kedua request asli diulang dengan token baru
+    // Both original requests replayed with the new token
     expect(e1.config.headers.Authorization).toBe('Bearer at-baru')
     expect(e2.config.headers.Authorization).toBe('Bearer at-baru')
     expect(localStorage.getItem('refreshToken')).toBe('rt-baru')
