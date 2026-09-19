@@ -25,5 +25,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Coverage config — lcov is what SonarQube consumes (sonar.javascript.lcov.reportPaths)
+    coverage: {
+      reporter: ['text', 'lcov'],
+      include: ['src/**'],
+      exclude: ['src/**/*.test.js', 'src/**/*.spec.js', 'src/**/icons/**'],
+    },
   },
 })
