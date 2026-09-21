@@ -91,8 +91,11 @@
         <img src="/logo.png" alt="Background Logo" class="w-[800] object-contain -rotate-12 scale-150" />
       </div>
 
-      <!-- Topbar -->
-      <header class="h-14 md:h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-10">
+      <!-- Content -->
+      <main class="custom-scroll flex-1 min-h-0 overflow-auto space-y-4 md:space-y-5 relative z-10">
+
+        <!-- Topbar — scrolls together with the content, not pinned to the top -->
+        <header class="h-14 md:h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 md:px-6">
         <div class="flex items-center gap-3">
           <button @click="sidebarOpen = true" class="md:hidden text-gray-500 hover:text-gray-700">
             <MenuIcon :size="20" />
@@ -121,8 +124,7 @@
         </div>
       </header>
 
-      <!-- Content -->
-      <main class="custom-scroll flex-1 min-h-0 p-4 md:p-6 overflow-auto space-y-4 md:space-y-5 relative z-10">
+      <div class="p-4 md:p-6 space-y-4 md:space-y-5">
 
         <!-- Loading state -->
         <div v-if="store.loading" class="flex items-center justify-center h-64">
@@ -295,6 +297,7 @@
           </div>
 
         </template>
+      </div>
 
       </main>
     </div>
@@ -355,7 +358,6 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AppTooltip from '@/components/AppTooltip.vue'
 import WeatherWidget from '@/components/WeatherWidget.vue'
 
-import BoltIcon from '@/components/icons/BoltIcon.vue'
 import HomeIcon from '@/components/icons/HomeIcon.vue'
 import UsersIcon from '@/components/icons/UsersIcon.vue'
 import PowerIcon from '@/components/icons/PowerIcon.vue'
@@ -419,12 +421,14 @@ async function fetchWeather() {
     const hour = new Date().getHours()
     const isRain = curr.weather_code >= 51 && curr.weather_code <= 99
     
-        let icon = SunIcon
-    let conditionText = 'Cerah'
-    let bgTheme = 'bg-[#f0f2f5]' 
-    let widgetTheme = 'bg-blue-50 text-blue-600'
-    let sidebarColor = 'from-[#0f8cd5]'
-    let accent = '#0f8cd5'
+    // Every branch below assigns all of these, so no initialiser is needed
+    // (SonarQube javascript:S1854). `night` still needs its default.
+    let icon
+    let conditionText
+    let bgTheme
+    let widgetTheme
+    let sidebarColor
+    let accent
     let night = false
 
     if (isRain) {
@@ -545,7 +549,7 @@ function connectWebSocket() {
       })
       stompClient.subscribe('/topic/power', (msg) => {
         const parts = msg.body.split(',')
-        if (parts.length >= 1) store.updateCurrentWatts(parseFloat(parts[0]))
+        if (parts.length >= 1) store.updateCurrentWatts(Number.parseFloat(parts[0]))
       })
     },
     onDisconnect: () => { wsConnected.value = false },
