@@ -103,6 +103,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 
+// Chart formatting lives in a pure util so it can be unit-tested without
+// mounting the component; the component only threads the `format` prop through.
+import { lineColor, niceTicks, formatValue, formatYLabel, fmtTick, fmtPrecise } from '@/utils/metricsFormat'
+
 // Layout similar to LogsVolumeChart, plus a left gutter for Y tick labels
 const W = 720
 const H = 170
@@ -120,12 +124,6 @@ const props = defineProps({
   // legend is fully rendered and NOT scrollable (e.g. fixed `(__name__)` series list)
   hideLegendScrollbar: { type: Boolean, default: false },
 })
-
-// Grafana palette — color order matches the legend in the picture
-const COLORS = ['#73BF69', '#F2CC0C', '#5794F2', '#FF9830', '#F2495C', '#B877D9', '#37872D', '#FADE2A', '#C15C17', '#E02F44', '#96D98D', '#FF7383']
-function lineColor(i) {
-  return COLORS[i % COLORS.length]
-}
 
 // ---- Grafana draw mode — Lines saja (per design) ----
 
@@ -181,39 +179,8 @@ const maxVal = computed(() => {
   return max > 0 ? max : 1
 })
 
-// ---- Nice round-number ticks Grafana/D3 style -----------------------------------
-// So gridlines land on round numbers (0, 25 Mil, 50 Mil, 75 Mil, 100 Mil...)
-// instead of raw percentages of the actual max value.
-// Includes the "2.5" fraction (besides 1/2/5/10) so ticks can land on multiples
-// of 25 (2.5 × 10^n) like 25 Mil/50 Mil/... Grafana-style, not just 20/50.
-function niceNum(range, round) {
-  const exponent = Math.floor(Math.log10(range))
-  const fraction = range / Math.pow(10, exponent)
-  let niceFraction
-  if (round) {
-    if (fraction < 1.5) niceFraction = 1
-    else if (fraction < 2.25) niceFraction = 2
-    else if (fraction < 3.75) niceFraction = 2.5
-    else if (fraction < 7) niceFraction = 5
-    else niceFraction = 10
-  } else {
-    if (fraction <= 1) niceFraction = 1
-    else if (fraction <= 2) niceFraction = 2
-    else if (fraction <= 2.5) niceFraction = 2.5
-    else if (fraction <= 5) niceFraction = 5
-    else niceFraction = 10
-  }
-  return niceFraction * Math.pow(10, exponent)
-}
-
-function niceTicks(max, tickDivisions = 8) {
-  if (max <= 0) return { niceMax: 1, step: 1 }
-  const range = niceNum(max, false)
-  const step = niceNum(range / tickDivisions, true)
-  const niceMax = Math.ceil(max / step) * step
-  return { niceMax, step }
-}
-
+// Nice round-number ticks (Grafana/D3 style) live in utils/metricsFormat.js —
+// pure and unit-tested; here we only feed the data max and consume the result.
 const ticks = computed(() => niceTicks(maxVal.value, 8))
 
 // The Y scale is shared by gridlines & point plotting (yAt) so lines and data align
@@ -240,49 +207,11 @@ const gridLines = computed(() => {
 function fmtY(v) {
   // bytes charts label their Y axis in binary units (KiB/MiB/GiB) so the axis
   // matches the tooltip/legend — no more "25 Mil" next to "23.8 MiB" values.
-  return props.format === 'bytes' ? fmtBytes(v) : fmtGrafana(v)
-}
-
-// Grafana-style Y format: "150 Mil" — English unit, compact number
-function fmtGrafana(v) {
-  if (v === 0) return '0'
-  const a = Math.abs(v)
-  if (a >= 1e9) return trimNum(v / 1e9) + ' Bil'
-  if (a >= 1e6) return trimNum(v / 1e6) + ' Mil'
-  if (a >= 1e3) return trimNum(v / 1e3) + ' K'
-  if (a >= 1) return trimNum(v)
-  return v.toPrecision(3)
-}
-function trimNum(n) {
-  const a = Math.abs(n)
-  const s = a >= 100 ? n.toFixed(0) : a >= 10 ? n.toFixed(1) : n.toFixed(2)
-  return s.replace(/\.0+$/, '').replace(/(\.\d)0$/, '$1')
-}
-
-function fmtBytes(v) {
-  if (v <= 0) return '0'
-  // IEC units with the B suffix (KiB/MiB/GiB) — matches the AI context text and
-  // the prompt rule that values use the same units the chart shows.
-  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
-  let i = 0
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024
-    i++
-  }
-  return (i === 0 ? Math.round(v) : v.toFixed(i >= 2 ? 0 : 1)) + units[i]
-}
-
-function fmtCompact(v) {
-  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + 'M'
-  if (Math.abs(v) >= 1e3) return (v / 1e3).toFixed(1) + 'k'
-  if (Math.abs(v) >= 1) return v.toFixed(1)
-  return v.toFixed(3)
+  return formatYLabel(props.format, v)
 }
 
 function fmtValue(v) {
-  if (props.format === 'bytes') return fmtBytes(v)
-  if (props.format === 'ratio') return (v * 100).toFixed(1) + '%'
-  return fmtCompact(v)
+  return formatValue(props.format, v)
 }
 
 function xAt(t) {
@@ -318,19 +247,6 @@ function xLabelStyle(t) {
   // Clamp at the left/right edges so labels aren't clipped by the panel border
   const transform = pct < 4 ? 'translateX(0)' : pct > 96 ? 'translateX(-100%)' : 'translateX(-50%)'
   return { left: pct + '%', transform }
-}
-
-function fmtTick(ms) {
-  const d = new Date(ms)
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-// Grafana-style precise timestamp in the tooltip
-function fmtPrecise(ms) {
-  const d = new Date(ms)
-  const pad = (n, len = 2) => String(n).padStart(len, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 const hoverTimeMs = computed(() => {
