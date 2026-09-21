@@ -85,7 +85,7 @@
 
     <!-- Legend — one row per series: colored dash + full label (Grafana).
          Click a strip to focus that series; click again to show all. -->
-    <div v-if="visibleSeries.length" class="custom-scroll max-h-30 overflow-y-auto px-3 py-2 space-y-1 border-t" :class="isDark ? 'border-[#2c3235]' : 'border-gray-100'">
+    <div v-if="visibleSeries.length" class="px-3 py-2 space-y-1 border-t" :class="[hideLegendScrollbar ? 'overflow-visible' : 'custom-scroll max-h-30 overflow-y-auto', isDark ? 'border-[#2c3235]' : 'border-gray-100']">
       <div
         v-for="(s, i) in visibleSeries"
         :key="s.name"
@@ -117,6 +117,8 @@ const props = defineProps({
   // header panel: title on the left, subtitle (query) to its right
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
+  // legend is fully rendered and NOT scrollable (e.g. fixed `(__name__)` series list)
+  hideLegendScrollbar: { type: Boolean, default: false },
 })
 
 // Grafana palette — color order matches the legend in the picture
@@ -166,7 +168,7 @@ const timeRange = computed(() => {
     t0 = Math.min(t0, s.points[0].t)
     t1 = Math.max(t1, s.points[s.points.length - 1].t)
   }
-  if (!isFinite(t0)) return { t0: 0, t1: 1 }
+  if (!Number.isFinite(t0)) return { t0: 0, t1: 1 }
   return { t0, t1: t1 > t0 ? t1 : t0 + 1 }
 })
 
@@ -236,7 +238,9 @@ const gridLines = computed(() => {
 })
 
 function fmtY(v) {
-  return fmtGrafana(v)
+  // bytes charts label their Y axis in binary units (KiB/MiB/GiB) so the axis
+  // matches the tooltip/legend — no more "25 Mil" next to "23.8 MiB" values.
+  return props.format === 'bytes' ? fmtBytes(v) : fmtGrafana(v)
 }
 
 // Grafana-style Y format: "150 Mil" — English unit, compact number
@@ -257,7 +261,9 @@ function trimNum(n) {
 
 function fmtBytes(v) {
   if (v <= 0) return '0'
-  const units = ['B', 'Ki', 'Mi', 'Gi', 'Ti']
+  // IEC units with the B suffix (KiB/MiB/GiB) — matches the AI context text and
+  // the prompt rule that values use the same units the chart shows.
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
   let i = 0
   while (v >= 1024 && i < units.length - 1) {
     v /= 1024
