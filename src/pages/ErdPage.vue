@@ -963,7 +963,7 @@ const formattedExplain = computed(() =>
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
-    .replaceAll(EXPLAIN_EMPHASIS_RE, (m) => `<em>${m.replace(/`/g, '')}</em>`),
+    .replaceAll(EXPLAIN_EMPHASIS_RE, (m) => `<em>${m.replaceAll('`', '')}</em>`),
 )
 
 // Relations already matched on this page from the loaded schema — sent along
