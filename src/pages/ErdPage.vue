@@ -583,7 +583,6 @@ import LinkIcon from '@/components/icons/LinkIcon.vue'
 import CloseIcon from '@/components/icons/CloseIcon.vue'
 import ArrowLeftIcon from '@/components/icons/ArrowLeftIcon.vue'
 import ArrowRightIcon from '@/components/icons/ArrowRightIcon.vue'
-import ChevronDownIcon from '@/components/icons/ChevronDownIcon.vue'
 import ChevronUpIcon from '@/components/icons/ChevronUpIcon.vue'
 
 const router = useRouter()
@@ -951,19 +950,20 @@ function explainKind(col) {
   return 'Unique key'
 }
 
-// Italicize the important tokens in the streamed explanation: backticked
-// phrases, relationship types (one-to-many, many-to-one, ...), and DB
-// identifiers — snake_case columns like id_users and dotted refs like
-// users.id. The raw text is HTML-escaped first because the result is
-// rendered via v-html.
-const EXPLAIN_EMPHASIS_RE = /(`[^`]+`)|\b(one[ -]to[ -]many|many[ -]to[ -]one|one[ -]to[ -]one|many[ -]to[ -]many)\b|\b[a-z][a-z0-9_]+\.[a-z][a-z0-9_]*\b|\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/gi
+// Emphasis tokens in the streamed explanation: backticked phrases, relationship
+// types (one-to-many, ...), and DB identifiers — snake_case columns like id_users
+// and dotted refs like users.id. Kept to three flat alternations over \w shorthands:
+// no nested quantifiers, so no super-linear backtracking (S8786), and low enough
+// complexity for javascript:S5843. Raw text is HTML-escaped before this runs
+// because the result is rendered via v-html.
+const EXPLAIN_EMPHASIS_RE = /(`[^`\n]+`)|\b(?:one|many)[ -]to[ -](?:one|many)\b|\b[a-z][a-z0-9]*(?:\.[a-z0-9]+|_[a-z0-9]+)+\b/gi
 
 const formattedExplain = computed(() =>
   explainText.value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(EXPLAIN_EMPHASIS_RE, (m) => `<em>${m.replace(/`/g, '')}</em>`),
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll(EXPLAIN_EMPHASIS_RE, (m) => `<em>${m.replace(/`/g, '')}</em>`),
 )
 
 // Relations already matched on this page from the loaded schema — sent along
@@ -1020,7 +1020,7 @@ const codeLines = computed(() => (codePanel.value.code ? codePanel.value.code.sp
 const codeHovered = ref(false)
 
 function escapeHtml(text) {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 }
 
 // Comments and strings first so their contents are never re-tokenized;
@@ -1028,7 +1028,10 @@ function escapeHtml(text) {
 const JAVA_TOKEN_RE = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(@[A-Za-z_$][\w$]*)|\b(package|import|public|private|protected|class|interface|enum|record|extends|implements|static|final|void|return|new|this|super|if|else|for|while|do|switch|case|default|break|continue|try|catch|finally|throw|throws|null|true|false|abstract|transient|volatile|synchronized|native|instanceof|var)\b|\b([A-Z][A-Za-z0-9_$]*)\b|\b(\d[\d_]*(?:\.[\d_]+)?(?:[eE][+-]?\d+)?[fFdDlL]?|0[xX][0-9a-fA-F_]+[lL]?)\b|\b([a-z_$][\w$]*)(?=\s*\()/g
 
 const highlightedCode = computed(() =>
-  escapeHtml(codePanel.value.code).replace(JAVA_TOKEN_RE, (m, comment, str, anno, kw, type, num, method) => {
+  // The capture groups arrive as a rest argument and are destructured, which
+  // keeps the callback under SonarQube's parameter limit (javascript:S107).
+  escapeHtml(codePanel.value.code).replace(JAVA_TOKEN_RE, (m, ...groups) => {
+    const [comment, str, anno, kw, type, num, method] = groups
     if (comment) return `<span class="tok-cmt">${m}</span>`
     if (str) return `<span class="tok-str">${m}</span>`
     if (anno) return `<span class="tok-anno">${m}</span>`
@@ -1108,8 +1111,8 @@ function selectDataTable(name) {
 
 // ---- toolbar minimize + data-table dropdown --------------------------------
 const toolsMinimized = ref(false)
-// overflow-hidden pada baris tools hanya diterapkan selama animasi buka/tutup
-// (toolsAnimating) — kalau permanen, tooltip hover tombol-tombolnya ikut terpotong.
+// overflow-hidden on the tools row is applied only during the open/close
+// animation (toolsAnimating) — if permanent, the buttons' hover tooltips get clipped too.
 const toolsAnimating = ref(false)
 let toolsAnimTimer = null
 function toggleTools() {
@@ -1241,6 +1244,66 @@ function resetView() {
   focusedTable.value = null
 }
 
+// Route a relation cable between two tables stacked in (or overlapping) the same
+// column — wired vertically (bottom-to-top) so the cable does not loop around
+// the boxes in between.
+function verticalCable(fp, tp, fromH, toH, fromLabelText, toLabelText) {
+  const fromAbove = fp.y < tp.y
+  const fx = fp.x + BOX_W / 2
+  const fy = fromAbove ? fp.y + fromH : fp.y
+  const tx = tp.x + BOX_W / 2
+  const ty = fromAbove ? tp.y : tp.y + toH
+  const dy = (ty - fy) * 0.5
+  const d = `M ${fx} ${fy} C ${fx} ${fy + dy}, ${tx} ${ty - dy}, ${tx} ${ty}`
+  return {
+    d,
+    fromLabel: { x: fx + 11, y: fy + (fromAbove ? 13 : -7), text: fromLabelText },
+    toLabel: { x: tx + 11, y: ty + (fromAbove ? -7 : 13), text: toLabelText },
+  }
+}
+
+// Route a relation cable side-to-side, anchored at the exact rows of the two
+// referenced columns.
+function horizontalCable(fp, tp, fromTable, toTable, r, fromLabelText, toLabelText) {
+  const fIdx = fromTable.columns.findIndex((c) => c.name === r.fromColumn)
+  const tIdx = toTable.columns.findIndex((c) => c.name === r.toColumn)
+  const fromRightOf = fp.x + BOX_W / 2 < tp.x + BOX_W / 2
+  const fx = fromRightOf ? fp.x + BOX_W : fp.x
+  const fy = fp.y + HEAD_H + Math.max(0, fIdx) * ROW_H + ROW_H / 2
+  const tx = fromRightOf ? tp.x : tp.x + BOX_W
+  const ty = tp.y + HEAD_H + Math.max(0, tIdx) * ROW_H + ROW_H / 2
+  const dx = Math.max(50, Math.abs(tx - fx) / 2)
+  const d = `M ${fx} ${fy} C ${fx + (fromRightOf ? dx : -dx)} ${fy}, ${tx + (fromRightOf ? -dx : dx)} ${ty}, ${tx} ${ty}`
+  return {
+    d,
+    fromLabel: { x: fx + (fromRightOf ? 11 : -11), y: fy - 6, text: fromLabelText },
+    toLabel: { x: tx + (fromRightOf ? -11 : 11), y: ty - 6, text: toLabelText },
+  }
+}
+
+function cableGeometry(r, fp, tp, fromTable, toTable, fromLabelText, toLabelText) {
+  // Tables placed in the same (or overlapping) column look messy when wired
+  // left-to-right — route those vertically instead.
+  const overlapX = fp.x < tp.x + BOX_W && tp.x < fp.x + BOX_W
+  return overlapX
+    ? verticalCable(fp, tp, boxHeight(fromTable), boxHeight(toTable), fromLabelText, toLabelText)
+    : horizontalCable(fp, tp, fromTable, toTable, r, fromLabelText, toLabelText)
+}
+
+// Active/dimmed state of one relation: explicitly picked relations win, then the
+// focused table's neighbourhood, defaulting to quiet.
+function highlightState(key, r) {
+  if (activeRelKeys.value) {
+    const active = activeRelKeys.value.has(key)
+    return { active, dimmed: !active }
+  }
+  if (focusedTable.value) {
+    const active = highlighted.value.has(r.from) && highlighted.value.has(r.to)
+    return { active, dimmed: !active }
+  }
+  return { active: false, dimmed: false }
+}
+
 const paths = computed(() => {
   return schema.relations.map((r) => {
     const fromTable = schema.tables.find((t) => t.name === r.from)
@@ -1255,50 +1318,9 @@ const paths = computed(() => {
     const fromLabelText = fromCol?.pk ? '1' : '*'
     const toLabelText = toCol?.pk ? '1' : '*'
 
-    const fromH = boxHeight(fromTable)
-    const toH = boxHeight(toTable)
-    // Tables placed in the same (or overlapping) column look messy when
-    // wired left-to-right, since the cable has to loop all the way around
-    // the boxes in between — route those vertically (bottom-to-top) instead.
-    const overlapX = fp.x < tp.x + BOX_W && tp.x < fp.x + BOX_W
-
-    let fx, fy, tx, ty, d, fromLabel, toLabel
-
-    if (overlapX) {
-      const fromAbove = fp.y < tp.y
-      fx = fp.x + BOX_W / 2
-      fy = fromAbove ? fp.y + fromH : fp.y
-      tx = tp.x + BOX_W / 2
-      ty = fromAbove ? tp.y : tp.y + toH
-      const dy = (ty - fy) * 0.5
-      d = `M ${fx} ${fy} C ${fx} ${fy + dy}, ${tx} ${ty - dy}, ${tx} ${ty}`
-      fromLabel = { x: fx + 11, y: fy + (fromAbove ? 13 : -7), text: fromLabelText }
-      toLabel = { x: tx + 11, y: ty + (fromAbove ? -7 : 13), text: toLabelText }
-    } else {
-      const fIdx = fromTable.columns.findIndex((c) => c.name === r.fromColumn)
-      const tIdx = toTable.columns.findIndex((c) => c.name === r.toColumn)
-      const fromRightOf = fp.x + BOX_W / 2 < tp.x + BOX_W / 2
-      fx = fromRightOf ? fp.x + BOX_W : fp.x
-      fy = fp.y + HEAD_H + Math.max(0, fIdx) * ROW_H + ROW_H / 2
-      tx = fromRightOf ? tp.x : tp.x + BOX_W
-      ty = tp.y + HEAD_H + Math.max(0, tIdx) * ROW_H + ROW_H / 2
-      const dx = Math.max(50, Math.abs(tx - fx) / 2)
-      d = `M ${fx} ${fy} C ${fx + (fromRightOf ? dx : -dx)} ${fy}, ${tx + (fromRightOf ? -dx : dx)} ${ty}, ${tx} ${ty}`
-      fromLabel = { x: fx + (fromRightOf ? 11 : -11), y: fy - 6, text: fromLabelText }
-      toLabel = { x: tx + (fromRightOf ? -11 : 11), y: ty - 6, text: toLabelText }
-    }
-
-    let active = false
-    let dimmed = false
-    if (activeRelKeys.value) {
-      active = activeRelKeys.value.has(key)
-      dimmed = !active
-    } else if (focusedTable.value) {
-      active = highlighted.value.has(r.from) && highlighted.value.has(r.to)
-      dimmed = !active
-    }
-
-    return { key, id: pathId(key), d, active, dimmed, fromLabel, toLabel }
+    const geom = cableGeometry(r, fp, tp, fromTable, toTable, fromLabelText, toLabelText)
+    const { active, dimmed } = highlightState(key, r)
+    return { key, id: pathId(key), d: geom.d, active, dimmed, fromLabel: geom.fromLabel, toLabel: geom.toLabel }
   }).filter(Boolean)
 })
 
