@@ -83,16 +83,19 @@
           >
             <span class="truncate">{{ activeConversationTitle }}</span>
           </div>
-          <input
-            v-else
-            ref="titleInputEl"
-            v-model="titleDraft"
-            @keydown.enter="titleInputEl?.blur()"
-            @keydown.esc="cancelEditTitle"
-            @blur="saveTitle"
-            class="px-2.5 py-1 rounded-lg border text-xs font-medium outline-none bg-transparent"
-            :style="{ width: titleInputWidth, borderColor: accentColor, color: accentColor }"
-          />
+          <div v-else>
+            <label for="conversation-title-input" class="sr-only">Judul percakapan</label>
+            <input
+              id="conversation-title-input"
+              ref="titleInputEl"
+              v-model="titleDraft"
+              @keydown.enter="titleInputEl?.blur()"
+              @keydown.esc="cancelEditTitle"
+              @blur="saveTitle"
+              class="px-2.5 py-1 rounded-lg border text-xs font-medium outline-none bg-transparent"
+              :style="{ width: titleInputWidth, borderColor: accentColor, color: accentColor }"
+            />
+          </div>
         </div>
         <div v-else class="flex-1 min-w-0"></div>
 
@@ -189,7 +192,7 @@
               <!-- Attached file preview -->
               <div v-if="msg.attachment" class="mb-1.5 flex justify-end">
                 <div class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs" :class="isDark ? 'bg-white/10 text-white/70' : 'bg-gray-100 text-gray-600'">
-                  <img v-if="msg.attachment.isImage" :src="msg.attachment.previewUrl" class="w-8 h-8 rounded object-cover" />
+                  <img v-if="msg.attachment.isImage" :src="msg.attachment.previewUrl" :alt="msg.attachment.name" class="w-8 h-8 rounded object-cover" />
                   <FileIcon v-else :size="14" />
                   <span class="truncate max-w-40">{{ msg.attachment.name }}</span>
                 </div>
@@ -307,7 +310,6 @@ import MenuIcon from '@/components/icons/MenuIcon.vue'
 import HistoryIcon from '@/components/icons/HistoryIcon.vue'
 import TrashIcon from '@/components/icons/TrashIcon.vue'
 import FileIcon from '@/components/icons/FileIcon.vue'
-import CloseIcon from '@/components/icons/CloseIcon.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
@@ -441,9 +443,11 @@ async function fetchWeather() {
     const hour = new Date().getHours()
     const isRain = curr.weather_code >= 51 && curr.weather_code <= 99
 
-    let bgTheme = 'bg-[#f0f2f5]'
-    let sidebarColor = 'from-[#0f8cd5]'
-    let accent = '#0f8cd5'
+    // All four branches assign these three, so no initialiser is needed
+    // (SonarQube javascript:S1854). `night` still needs its default.
+    let bgTheme
+    let sidebarColor
+    let accent
     let night = false
 
     if (isRain) {
@@ -759,7 +763,7 @@ async function send() {
     agentService.streamDocument(userMsg.content, file, activeConversationId.value, onChunk, onDone, onError)
   } else {
     const history = buildHistory().slice(0, -1)
-    agentService.streamChat(text, history, activeConversationId.value, onChunk, onDone, onError)
+    agentService.streamChat(text, onChunk, onDone, onError, { history, conversationId: activeConversationId.value })
   }
 }
 
