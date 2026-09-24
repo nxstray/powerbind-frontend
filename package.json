@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "sbom": "npm sbom --sbom-format cyclonedx",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "lint": "run-s \"lint:*\"",
