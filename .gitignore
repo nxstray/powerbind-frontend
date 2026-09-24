@@ -40,3 +40,9 @@ __screenshots__/
 
 # Repomix generated bundles
 repomix-*.xml
+.scannerwork/
+sonar-scan-log.txt
+.env
+
+# Generated SBOM (CycloneDX)
+sbom/
