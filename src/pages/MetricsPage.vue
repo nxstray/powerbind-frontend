@@ -5,6 +5,7 @@
 
     <!-- Sidebar — same pattern as LogPage -->
     <aside
+      aria-label="Navigasi samping"
       :class="[
         'fixed md:sticky top-0 h-screen z-30 flex flex-col transition-all duration-500',
         'bg-linear-to-br to-[#d5e2de]',
@@ -25,7 +26,7 @@
           ]"
           :title="sidebarCollapsed ? item.name : ''"
         >
-          <component :is="item.icon" :size="17" class="shrink-0" />
+          <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300 group-hover:animate-pulse" />
           <span v-if="!sidebarCollapsed" class="relative top-px">{{ item.name }}</span>
         </button>
       </nav>
@@ -64,116 +65,136 @@
       </div>
     </aside>
 
-    <div class="flex-1 flex flex-col min-w-0 relative overflow-hidden h-screen">
-      <!-- Header -->
-      <div class="px-4 sm:px-6 pt-4 pb-2 flex items-center gap-3 shrink-0">
-        <button
-          @click="sidebarOpen = true"
-          class="md:hidden transition"
-          :class="isDark ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-gray-700'"
+    <!-- Main column + Ask Gemono panel are full-height siblings in the SAME row, so the
+         panel spans the entire viewport height (top to bottom) instead of only the strip
+         below the header. Keeping the header inside the shrinking left column also means
+         it (and the dropdowns in it) gets pushed/reflowed automatically when the panel
+         opens, with no extra logic needed. -->
+    <div class="flex-1 flex min-w-0 relative overflow-hidden h-screen">
+      <!-- Left column: pinned topbar + independently scrollable chart area -->
+      <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Topbar — styled and pinned like DashboardPage's header: fixed height, sits
+             OUTSIDE the scrollable <main> below, so it never moves/scrolls with the charts. -->
+        <header
+          class="h-14 md:h-16 shrink-0 border-b flex items-center gap-3 px-4 sm:px-6"
+          :class="isDark ? 'border-white/10' : 'border-gray-100'"
         >
-          <MenuIcon :size="20" />
-        </button>
-        <h1 class="text-lg font-bold" :class="isDark ? 'text-white' : 'text-gray-800'">System Metrics</h1>
-        <span v-if="lastUpdated" class="text-[10px] relative top-1" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">updated {{ lastUpdated }}</span>
-
-        <!-- Range dropdown -->
-        <div class="relative ml-auto" data-range-dd>
           <button
-            @click="rangeOpen = !rangeOpen"
-            class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
-            :class="isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:border-zinc-500' : 'bg-white border-gray-200 text-gray-600 hover:border-[#0f8cd5]'"
+            @click="sidebarOpen = true"
+            class="md:hidden transition"
+            :class="isDark ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-gray-700'"
           >
-            {{ rangeOptions.find((o) => o.value === hours)?.label }}
-            <ChevronLeftIcon :size="12" :class="rangeOpen ? 'rotate-90' : '-rotate-90'" class="transition-transform" />
+            <MenuIcon :size="20" />
           </button>
-          <div
-            v-if="rangeOpen"
-            class="absolute right-0 top-full mt-1 w-28 rounded-md shadow-lg z-10 overflow-hidden border"
-            :class="isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-100'"
-          >
+          <h1 class="text-lg font-bold" :class="isDark ? 'text-white' : 'text-gray-800'">System Metrics</h1>
+          <span v-if="lastUpdated" class="text-[10px] relative top-1" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">updated {{ lastUpdated }}</span>
+
+          <!-- Range dropdown -->
+          <div class="relative ml-auto" data-range-dd>
             <button
-              v-for="opt in rangeOptions"
-              :key="opt.value"
-              @click="selectRange(opt.value)"
-              class="w-full text-left px-3 py-2 text-xs transition"
-              :class="hours === opt.value ? (isDark ? 'bg-white/10 text-white' : 'bg-[#0f8cd5]/10 text-[#0f8cd5]') : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50')"
+              @click="rangeOpen = !rangeOpen"
+              class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
+              :class="isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:border-zinc-500' : 'bg-white border-gray-200 text-gray-600 hover:border-[#0f8cd5]'"
             >
-              {{ opt.label }}
+              {{ rangeOptions.find((o) => o.value === hours)?.label }}
+              <ChevronLeftIcon :size="12" :class="rangeOpen ? 'rotate-90' : '-rotate-90'" class="transition-transform" />
             </button>
-          </div>
-        </div>
-
-        <!-- Ask Gemono trigger — stays visible on the header row, aligned with the
-             hour dropdown; acts as an open/close toggle (flush to the window edge) -->
-        <button
-          @click="askOpen = !askOpen"
-          class="flex items-center gap-1.5 rounded-l-lg border border-r-0 px-3 py-1.5 -mr-4 sm:-mr-6 text-xs font-semibold shadow-lg transition-colors cursor-pointer"
-          :class="[
-            askOpen
-              ? (isDark ? 'bg-zinc-800 text-zinc-100 border-white/10' : 'bg-white text-slate-700 border-gray-200')
-              : (isDark ? 'bg-zinc-800 text-amber-400 border-white/10 hover:bg-zinc-700' : 'bg-amber-400 text-slate-800 border-gray-200 hover:bg-amber-300'),
-          ]"
-        >
-          <GemonoIcon :size="14" variant="white" class="rounded-sm" />
-          Ask Gemono
-        </button>
-      </div>
-
-      <!-- Charts + Ask Gemono side panel — the panel slides in from the right edge
-           and PUSHES the chart container (ErdPage data-panel pattern, horizontal) -->
-      <div class="flex-1 flex min-h-0 overflow-hidden">
-        <main class="custom-scroll flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 pb-6 space-y-3">
-        <div v-if="error" class="rounded-md border border-red-200 bg-red-50 text-red-600 text-xs px-3 py-2">{{ error }}</div>
-
-        <!-- Two containers only: memory (fixed) + metric explorer (dropdown + search) -->
-        <MetricsChart :series="memorySeries" format="bytes" title="jvm_memory_used_bytes" :is-dark="isDark" hide-legend-scrollbar />
-
-        <MetricsChart :series="cpuSeries" format="ratio" :title="selectedMetric" :is-dark="isDark">
-          <template #actions>
-            <div class="relative" data-metric-dd>
+            <div
+              v-if="rangeOpen"
+              class="absolute right-0 top-full mt-1 w-28 rounded-md shadow-lg z-10 overflow-hidden border"
+              :class="isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-100'"
+            >
               <button
-                @click="metricOpen = !metricOpen"
-                class="flex items-center gap-1.5 text-[10px] font-medium rounded border px-2 py-1 transition max-w-60"
-                :class="isDark ? 'border-[#41474d] bg-[#22252b] text-zinc-300 hover:border-zinc-500' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-[#0f8cd5]'"
+                v-for="opt in rangeOptions"
+                :key="opt.value"
+                @click="selectRange(opt.value)"
+                class="w-full text-left px-3 py-2 text-xs transition"
+                :class="hours === opt.value ? (isDark ? 'bg-white/10 text-white' : 'bg-[#0f8cd5]/10 text-[#0f8cd5]') : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50')"
               >
-                <span class="truncate">{{ selectedMetric }}</span>
-                <ChevronLeftIcon :size="11" :class="metricOpen ? 'rotate-90' : '-rotate-90'" class="transition-transform shrink-0" />
+                {{ opt.label }}
               </button>
-              <div
-                v-if="metricOpen"
-                class="absolute right-0 top-full mt-1 w-72 rounded-md shadow-lg z-10 overflow-hidden border"
-                :class="isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-100'"
-              >
-                <div class="p-1.5 border-b" :class="isDark ? 'border-zinc-700' : 'border-gray-100'">
-                  <input
-                    v-model="metricSearch"
-                    placeholder="Cari metrik…"
-                    class="w-full text-[10px] rounded border px-2 py-1 outline-none"
-                    :class="isDark ? 'border-zinc-600 bg-zinc-900/60 text-zinc-200 placeholder-zinc-500 focus:border-zinc-400' : 'border-gray-200 bg-gray-50 text-gray-700 placeholder-gray-400 focus:border-[#0f8cd5]'"
-                  />
-                </div>
-                <div class="max-h-52 overflow-y-auto custom-scroll">
-                  <button
-                    v-for="n in filteredMetrics"
-                    :key="n"
-                    @click="selectMetric(n)"
-                    class="w-full text-left px-3 py-1.5 text-[10px] font-mono transition"
-                    :class="selectedMetric === n ? (isDark ? 'bg-white/10 text-white' : 'bg-[#0f8cd5]/10 text-[#0f8cd5]') : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50')"
-                  >
-                    {{ n }}
-                  </button>
-                  <p v-if="!filteredMetrics.length" class="px-3 py-2 text-[10px]" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">Tidak ada metrik yang cocok.</p>
+            </div>
+          </div>
+
+          <!-- Ask Gemono trigger — hidden while the panel is open (the panel itself has
+               a close button), so the header never shows two "Ask Gemono" entry points. -->
+          <button
+            v-if="!askOpen"
+            @click="askOpen = true"
+            class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border transition"
+            :class="[
+              askOpen
+                ? (isDark ? 'bg-zinc-800 text-zinc-100 border-zinc-700' : 'bg-white text-slate-700 border-gray-200')
+                : (isDark ? 'bg-zinc-800 text-amber-400 border-zinc-700 hover:border-zinc-500' : 'bg-amber-400 text-slate-800 border-amber-400 hover:bg-amber-300'),
+            ]"
+          >
+            <GemonoIcon :size="14" variant="white" class="rounded-sm" />
+            Ask Gemono
+          </button>
+        </header>
+
+        <!-- Charts — this is the ONLY scrollable region on the page now, so there is
+             never a stray page-level scrollbar fighting with the panel/topbar. -->
+        <main class="custom-scroll flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-3 space-y-3">
+          <div v-if="error" class="rounded-md border border-red-200 bg-red-50 text-red-600 text-xs px-3 py-2">{{ error }}</div>
+
+          <!-- Two containers only: memory (fixed) + metric explorer (dropdown + search) -->
+          <MetricsChart :series="memorySeries" format="bytes" title="jvm_memory_used_bytes" :is-dark="isDark" hide-legend-scrollbar />
+
+          <MetricsChart :series="cpuSeries" format="ratio" :title="selectedMetric" :is-dark="isDark">
+            <template #actions>
+              <div class="relative" data-metric-dd>
+                <button
+                  @click="metricOpen = !metricOpen"
+                  class="flex items-center gap-1.5 text-[10px] font-medium rounded border px-2 py-1 transition max-w-60"
+                  :class="isDark ? 'border-[#41474d] bg-[#22252b] text-zinc-300 hover:border-zinc-500' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-[#0f8cd5]'"
+                >
+                  <span class="truncate">{{ selectedMetric }}</span>
+                  <ChevronLeftIcon :size="11" :class="metricOpen ? 'rotate-90' : '-rotate-90'" class="transition-transform shrink-0" />
+                </button>
+                <div
+                  v-if="metricOpen"
+                  class="absolute right-0 top-full mt-1 w-72 rounded-md shadow-lg z-10 overflow-hidden border"
+                  :class="isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-gray-100'"
+                >
+                  <div class="p-1.5 border-b" :class="isDark ? 'border-zinc-700' : 'border-gray-100'">
+                    <label for="metric-search" class="sr-only">Cari metrik</label>
+                    <input
+                      id="metric-search"
+                      v-model="metricSearch"
+                      placeholder="Cari metrik…"
+                      class="w-full text-[10px] rounded border px-2 py-1 outline-none"
+                      :class="isDark ? 'border-zinc-600 bg-zinc-900/60 text-zinc-200 placeholder-zinc-500 focus:border-zinc-400' : 'border-gray-200 bg-gray-50 text-gray-700 placeholder-gray-400 focus:border-[#0f8cd5]'"
+                    />
+                  </div>
+                  <div class="max-h-52 overflow-y-auto custom-scroll">
+                    <button
+                      v-for="n in filteredMetrics"
+                      :key="n"
+                      @click="selectMetric(n)"
+                      class="w-full text-left px-3 py-1.5 text-[10px] font-mono transition"
+                      :class="selectedMetric === n ? (isDark ? 'bg-white/10 text-white' : 'bg-[#0f8cd5]/10 text-[#0f8cd5]') : (isDark ? 'text-zinc-300 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-50')"
+                    >
+                      {{ n }}
+                    </button>
+                    <p v-if="!filteredMetrics.length" class="px-3 py-2 text-[10px]" :class="isDark ? 'text-zinc-500' : 'text-gray-400'">Tidak ada metrik yang cocok.</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </template>
-        </MetricsChart>
-      </main>
+            </template>
+          </MetricsChart>
+        </main>
+      </div>
 
-        <!-- Ask Gemono side panel — width animates 0 -> 320px, pushing the charts left -->
+      <!-- Ask Gemono panel wrapper — full viewport height (top to bottom). The
+           width-animated <aside> does the clipping of the fixed 320px panel content,
+           keeping the panel flush against the chart column with no gap and no stray
+           scrollbar around it. -->
+      <div class="relative shrink-0 h-full">
+        <!-- Ask Gemono side panel — width animates 0 -> 320px, pushing the chart column left -->
         <aside
-          class="relative shrink-0 h-full overflow-hidden transition-[width] duration-300 ease-out border-l"
+          aria-label="Panel Ask Gemono"
+          class="h-full overflow-hidden transition-[width] duration-300 ease-out border-l"
           :class="askOpen
             ? (isDark ? 'bg-zinc-900 border-white/10' : 'bg-white border-gray-200')
             : 'border-transparent'"
@@ -182,7 +203,7 @@
           <div class="flex h-full w-80 flex-col">
             <div class="flex items-center gap-1.5 px-3 py-2 border-b shrink-0" :class="isDark ? 'border-white/10' : 'border-gray-100'">
               <GemonoIcon :size="14" :variant="isDark ? 'white' : 'dark'" class="rounded-sm" />
-              <p class="text-xs font-semibold" :class="isDark ? 'text-zinc-100' : 'text-gray-800'">Ask Gemono — metric explained</p>
+              <p class="text-xs font-semibold" :class="isDark ? 'text-zinc-100' : 'text-gray-800'">Ask Gemono</p>
               <button @click="askOpen = false" class="ml-auto p-0.5 rounded transition" :class="isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'">
                 <CloseIcon :size="13" />
               </button>
@@ -201,11 +222,18 @@
                   </div>
                 </div>
               </template>
-              <p v-else :class="isDark ? 'text-zinc-500' : 'text-gray-400'" class="text-[11px]">Tanyakan apa arti grafik di halaman ini.</p>
+              <!-- Empty state — typewriter greeting like AgentPage (font Doto) -->
+              <div v-else class="h-full flex items-center justify-center">
+                <h2 class="text-base font-bold font-doto text-center" :class="isDark ? 'text-white' : 'text-gray-800'">
+                  {{ typedGreeting }}<span class="typewriter-cursor" aria-hidden="true">|</span>
+                </h2>
+              </div>
             </div>
 
             <form @submit.prevent="sendAsk" class="flex items-center gap-1.5 px-3 py-2 border-t shrink-0" :class="isDark ? 'border-white/10' : 'border-gray-100'">
+              <label for="ask-gemono-input" class="sr-only">Tanya Gemono soal grafik</label>
               <input
+                id="ask-gemono-input"
                 v-model="askInput"
                 placeholder="Explain the memory chart…"
                 class="flex-1 text-xs rounded-md border px-2 py-1.5 outline-none focus:border-[#0f8cd5]"
@@ -236,7 +264,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import metricsService from '@/services/metricsService'
@@ -269,7 +297,10 @@ const rangeOptions = [
   { label: 'Last 24 hours', value: 24 },
 ]
 const hours = ref(1)
-const stepFor = (h) => (h === 1 ? 60 : h === 6 ? 240 : 900) // ~240 points per chart
+// Step size per range — a lookup keeps the value readable and avoids the nested
+// ternaries SonarQube flags (javascript:S3358). Unknown ranges fall back to 900s.
+const STEP_BY_HOURS = { 1: 60, 6: 240, 24: 900 }
+const stepFor = (h) => STEP_BY_HOURS[h] ?? 900 // ~240 points per chart
 
 const memorySeries = ref([])
 const cpuSeries = ref([])
@@ -412,6 +443,23 @@ async function fetchWeather() {
   }
 }
 
+// ---- typewriter greeting (same as AgentPage's empty state) --------------------
+const typedGreeting = ref('')
+let typeTimer = null
+const greetingFull = computed(() => `Halo, ${authStore.user?.displayName || 'Administrator'}`)
+
+function startTypewriter() {
+  clearInterval(typeTimer)
+  typedGreeting.value = ''
+  const text = greetingFull.value
+  let i = 0
+  typeTimer = setInterval(() => {
+    i++
+    typedGreeting.value = text.slice(0, i)
+    if (i >= text.length) clearInterval(typeTimer)
+  }, 55)
+}
+
 // ---- Q&A overlay (ephemeral — not stored in the AgentPage history) ----
 const askOpen = ref(false)
 const askInput = ref('')
@@ -430,6 +478,8 @@ function sendAsk() {
 
   agentService.streamQuickAsk(
     text,
+    [DEFAULT_METRIC, selectedMetric.value],
+    hours.value,
     (chunk) => {
       reply.content += chunk
     },
@@ -457,6 +507,12 @@ function onGlobalClick(e) {
 
 let pollTimer = null
 
+// Replay the typewriter greeting every time the panel is opened — the animation
+// plays inside the panel's empty state (before any message is sent).
+watch(askOpen, (open) => {
+  if (open && !askMessages.value.length) startTypewriter()
+})
+
 onMounted(() => {
   fetchWeather()
   fetchAll()
@@ -467,6 +523,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
+  clearInterval(typeTimer)
   document.removeEventListener('click', onGlobalClick)
 })
 </script>
