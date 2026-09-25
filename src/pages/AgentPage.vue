@@ -26,7 +26,7 @@
           ]"
           :title="sidebarCollapsed ? item.name : ''"
         >
-          <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300" :class="item.name === 'Gemono' ? 'group-hover:animate-pulse' : ''" />
+          <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300 group-hover:animate-pulse" />
           <!-- Nudged down 1px so the label baseline sits level with the icon -->
           <span v-if="!sidebarCollapsed" class="relative top-px">{{ item.name }}</span>
         </button>
