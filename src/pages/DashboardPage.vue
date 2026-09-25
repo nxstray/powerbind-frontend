@@ -37,12 +37,11 @@
                 : 'text-white/60 hover:bg-white/10 hover:text-white'
             ]"
           >
-            <!-- Icon animation logic: scale for all, pulse for the Gemono logo, door opening for home -->
-            <component 
-              :is="item.icon" 
-              :size="17" 
-              class="shrink-0 transition-all duration-300"
-              :class="item.name === 'Gemono' ? 'group-hover:animate-pulse' : ''"
+            <!-- Icon animation: pulse on hover for all sidebar icons -->
+            <component
+              :is="item.icon"
+              :size="17"
+              class="shrink-0 transition-all duration-300 group-hover:animate-pulse"
             />
             <span v-if="!sidebarCollapsed" class="relative top-px">{{ item.name }}</span>
           </button>
