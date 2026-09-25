@@ -11,7 +11,9 @@
 
         <form @submit.prevent="handleLogin" class="w-full flex flex-col gap-3">
           <div class="inputBx">
+            <label for="login-username" class="sr-only">Username</label>
             <input
+              id="login-username"
               v-model="form.username"
               type="text"
               placeholder="Username"
@@ -20,7 +22,9 @@
           </div>
 
           <div class="inputBx">
+            <label for="login-password" class="sr-only">Password</label>
             <input
+              id="login-password"
               v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
               placeholder="Password"
@@ -181,7 +185,9 @@ async function handleLogin() {
 }
 
 /* Sign in button — same look as before, now a <button> instead of
-   <input type="submit"> so it can render the loading-dots animation */
+   <input type="submit"> so it can render the loading-dots animation.
+   Both gradient stops stay dark enough for white text to pass the WCAG AA
+   4.5:1 contrast check (SonarQube css:S7924): #0b6fa8 = 5.45:1, #0369a1 = 5.92:1. */
 .submitBtn {
   width: 100%;
   padding: 0.5rem 0.9rem;
@@ -192,7 +198,7 @@ async function handleLogin() {
   font-weight: 600;
   font-size: 0.85rem;
   font-family: inherit;
-  background: linear-gradient(45deg, #0f8cd5, #38bdf8);
+  background: linear-gradient(45deg, #0b6fa8, #0369a1);
   background-size: 200% 200%;
   background-position: 0% 50%;
   text-align: center;
