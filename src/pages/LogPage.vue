@@ -23,7 +23,7 @@
           ]"
           :title="sidebarCollapsed ? item.name : ''"
         >
-          <component :is="item.icon" :size="17" class="shrink-0" />
+          <component :is="item.icon" :size="17" class="shrink-0 transition-all duration-300 group-hover:animate-pulse" />
           <span v-if="!sidebarCollapsed" class="relative top-px">{{ item.name }}</span>
         </button>
       </nav>
