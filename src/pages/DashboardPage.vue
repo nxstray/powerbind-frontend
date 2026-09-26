@@ -343,7 +343,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { useDashboardStore } from '@/stores/dashboardStore'
@@ -375,7 +375,6 @@ import CloudRainIcon from '@/components/icons/CloudRainIcon.vue'
 import CloudIcon from '@/components/icons/CloudIcon.vue'
 
 const router = useRouter()
-const route = useRoute()
 const store = useDashboardStore()
 const authStore = useAuthStore()
 
@@ -568,7 +567,7 @@ async function confirmTurnOff() {
   try {
     await store.setRoomRelay(relayConfirm.value.room.id, false)
     relayConfirm.value = { open: false, room: null, loading: false }
-  } catch (e) {
+  } catch {
     console.warn('[Dashboard] Failed to turn off relay')
     relayConfirm.value.loading = false
   }
@@ -590,7 +589,7 @@ async function confirmTurnOn() {
   try {
     await store.setRoomRelay(turnOnConfirm.value.room.id, true)
     turnOnConfirm.value = { open: false, room: null, loading: false }
-  } catch (e) {
+  } catch {
     console.warn('[Dashboard] Failed to turn on relay')
     turnOnConfirm.value.loading = false
   }
