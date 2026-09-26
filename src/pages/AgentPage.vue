@@ -406,7 +406,7 @@ async function saveTitle() {
 
   try {
     await agentService.renameConversation(activeConversationId.value, newTitle)
-  } catch (_) {
+  } catch {
     console.warn('[Agent] Failed to rename conversation')
     if (conv) conv.title = previousTitle // rollback if the backend rejects
   }
@@ -575,7 +575,7 @@ function handleOutsideClick(e) {
 async function loadConversationList() {
   try {
     conversations.value = await agentService.getConversations()
-  } catch (_) { conversations.value = [] }
+  } catch { conversations.value = [] }
 }
 
 async function fetchConversationMessages(id) {
@@ -592,7 +592,7 @@ async function fetchConversationMessages(id) {
     loadedConversationId.value = id
     localStorage.setItem(LAST_CONVERSATION_KEY, id)
     await scrollToBottom()
-  } catch (_) {
+  } catch {
     console.warn('[Agent] Failed to load conversation')
     localStorage.removeItem(LAST_CONVERSATION_KEY)
     router.replace('/agent')
@@ -620,7 +620,7 @@ async function removeConversation(id) {
     await agentService.deleteConversation(id)
     conversations.value = conversations.value.filter((c) => c.id !== id)
     if (route.params.id === id) startNewChat()
-  } catch (_) {
+  } catch {
     console.warn('[Agent] Failed to delete conversation')
   }
 }
@@ -819,7 +819,7 @@ onMounted(async () => {
   fetchWeather()
   nowTickTimer = setInterval(() => { nowTick.value = Date.now() }, 60000)
   document.addEventListener('click', handleOutsideClick)
-  try { await authStore.fetchProfile() } catch (_) {}
+  try { await authStore.fetchProfile() } catch { /* ignore profile load error */ }
   await loadConversationList()
   connectAnomalySocket()
 
