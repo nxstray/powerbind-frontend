@@ -770,7 +770,7 @@ async function loadSchema() {
     schema.tables = data.tables
     schema.relations = data.relations
     layoutTables(data.tables)
-  } catch (e) {
+  } catch {
     loadError.value = true
   } finally {
     loading.value = false
@@ -1054,7 +1054,7 @@ async function openCodePanel(tableName) {
     codePanel.value.className = data.className
     codePanel.value.code = data.code
     codePanel.value.loading = false
-  } catch (e) {
+  } catch {
     codePanel.value.loading = false
     codePanel.value.error = 'Gagal memuat kode entity.'
   }
@@ -1096,7 +1096,7 @@ async function fetchDataRows() {
     dataPanel.value.rows = data.rows
     dataPanel.value.total = data.total
     dataPanel.value.loading = false
-  } catch (e) {
+  } catch {
     dataPanel.value.loading = false
     dataPanel.value.error = 'Gagal memuat data tabel.'
   }
