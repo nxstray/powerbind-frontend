@@ -349,7 +349,7 @@ async function fetchAll() {
     cpuSeries.value = sel.series
     error.value = null
     lastUpdated.value = new Date().toLocaleTimeString()
-  } catch (e) {
+  } catch {
     error.value = 'Gagal mengambil metrik. Pastikan backend dan Prometheus jalan.'
   }
 }
