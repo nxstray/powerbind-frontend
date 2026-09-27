@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { decodeJwtPayload, getRoleFromToken } from './jwt'
 
-// Token dummy hasil encode base64url dari:
+// Dummy token, base64url-encoded from:
 // header: { alg: "HS256", typ: "JWT" }
 // payload: { sub: "admin", role: "ADMIN", iat: 1234567890 }
-// (signature-nya sengaja diisi string apa aja karena decodeJwtPayload cuma
-// baca payload, sama seperti behaviour aslinya di jwt.js — verifikasi
-// signature tetap tanggung jawab backend)
+// (the signature is deliberately just any string because decodeJwtPayload only
+// reads the payload, same as the actual behaviour in jwt.js — verifying
+// the signature remains the backend's responsibility)
 const VALID_TOKEN =
   'eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJzdWIiOiAiYWRtaW4iLCAicm9sZSI6ICJBRE1JTiIsICJpYXQiOiAxMjM0NTY3ODkwfQ.fakesignature'
 
