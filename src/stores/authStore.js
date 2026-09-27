@@ -40,9 +40,9 @@ export const useAuthStore = defineStore('auth', () => {
   // user must not stay "logged in" locally just because the network is down.
   async function logout() {
     try {
-      // localStorage = source of truth setelah silent refresh di api.js:
-      // interceptor me-rotate kedua token langsung di localStorage, sedangkan
-      // ref di sini bisa berisi refresh token lama yang sudah di-revoke.
+      // localStorage = source of truth after the silent refresh in api.js:
+      // the interceptor rotates both tokens directly in localStorage, while
+      // the ref here may still hold an already-revoked refresh token.
       const currentRefreshToken =
         localStorage.getItem('refreshToken') || refreshToken.value
       if (currentRefreshToken) {
