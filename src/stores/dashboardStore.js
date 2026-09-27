@@ -13,7 +13,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       loading.value = true
       error.value = null
       summary.value = await dashboardService.getSummary()
-    } catch (e) {
+    } catch {
       error.value = 'Failed to load dashboard data'
       summary.value = null
     } finally {
@@ -24,7 +24,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   async function fetchPowerHistory(hours = 24) {
     try {
       powerHistory.value = await dashboardService.getPowerHistory(hours)
-    } catch (e) {
+    } catch {
       powerHistory.value = []
     }
   }
