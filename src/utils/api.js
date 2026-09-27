@@ -49,7 +49,7 @@ async function trySilentRefresh(originalError) {
   const refreshToken = localStorage.getItem('refreshToken')
   if (!refreshToken) {
     clearSession()
-    return Promise.reject(originalError)
+    throw originalError
   }
 
   try {
@@ -69,7 +69,7 @@ async function trySilentRefresh(originalError) {
   } catch {
     // Refresh token expired/used up → only now do we truly log out
     clearSession()
-    return Promise.reject(originalError)
+    throw originalError
   }
 }
 
@@ -91,17 +91,14 @@ api.interceptors.response.use(
     // 2. 401 → try a silent refresh ONCE per request, then replay the original request
     if (status === 401 && config && !isRefreshExcluded(config.url) && !config._retry) {
       config._retry = true
-      try {
-        const accessToken = await trySilentRefresh(error)
-        // Replay the original request — the request interceptor will attach the
-        // latest token from localStorage, but set it here anyway for safety.
-        config.headers = config.headers || {}
-        config.headers.Authorization = `Bearer ${accessToken}`
-        return api(config)
-      } catch (e) {
-        // trySilentRefresh already called clearSession (refresh failed / token missing)
-        return Promise.reject(e)
-      }
+      // trySilentRefresh already called clearSession when the refresh failed or
+      // the token is missing, so there is no extra cleanup to do here.
+      const accessToken = await trySilentRefresh(error)
+      // Replay the original request — the request interceptor will attach the
+      // latest token from localStorage, but set it here anyway for safety.
+      config.headers = config.headers || {}
+      config.headers.Authorization = `Bearer ${accessToken}`
+      return api(config)
     }
 
     // 3. 401 on auth/logs endpoints or a request that was already retried —
@@ -110,7 +107,7 @@ api.interceptors.response.use(
       clearSession()
     }
 
-    return Promise.reject(error)
+    throw error
   },
 )
 
