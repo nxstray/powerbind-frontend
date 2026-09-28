@@ -48,6 +48,8 @@ const hoverTop = computed(() => {
   const clamped = Math.min(100, Math.max(0, props.fill))
   return `${Math.max(-10, 90 - clamped)}%`
 })
+
+defineExpose({ liquidTop, hoverTop })
 </script>
 
 <style scoped>

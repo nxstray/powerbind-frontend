@@ -9,9 +9,15 @@
     alt=""
     :width="size"
     :height="size"
-    class="inline-block shrink-0 object-contain brightness-0 invert scale-110"
+    class="inline-block shrink-0 object-contain scale-110"
+    :class="variant === 'white' ? 'brightness-0 invert' : 'brightness-0'"
   />
 </template>
 <script setup>
-defineProps({ size: { type: [String, Number], default: 24 } })
+// variant 'white' (default): glyph forced to solid white — for dark sidebars/headers.
+// variant 'dark': glyph solid black — for light canvases (white panels).
+defineProps({
+  size: { type: [String, Number], default: 24 },
+  variant: { type: String, default: 'white' },
+})
 </script>

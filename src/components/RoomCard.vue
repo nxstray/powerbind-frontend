@@ -8,10 +8,10 @@
       </div>
 
       <div class="flex items-center gap-1.5 shrink-0">
-        <AppTooltip :text="room.relayOn ? 'Klik untuk mematikan perangkat' : 'Perangkat sudah mati'" position="top">
-          <!-- Pill toggle ala CodePen @cl0udc0ntr0l (njQQbw) — ON = glow cyan, OFF = dim.
-               Klik langsung di semua perangkat (desktop & mobile sama);
-               validasi lewat ConfirmDialog di DashboardPage. -->
+        <AppTooltip :text="room.relayOn ? 'Klik untuk mematikan perangkat' : 'Klik untuk menyalakan perangkat'" position="top">
+           <!-- Pill toggle in the style of CodePen @cl0udc0ntr0l (njQQbw) — ON = cyan glow, OFF = dim.
+                Direct click on all devices (desktop & mobile alike);
+                validation goes through ConfirmDialog in DashboardPage. -->
           <div
             class="toggle shrink-0 cursor-pointer select-none"
             :class="{ 'toggle-on': room.relayOn }"
@@ -75,18 +75,19 @@ const props = defineProps({
   room: { type: Object, required: true },
 })
 
-const emit = defineEmits(['request-off'])
+const emit = defineEmits(['request-off', 'request-on'])
 
-// Klik langsung (desktop & mobile sama, tanpa hold). Hanya relay ON yang bisa
-// dimatikan; validasi ditangani ConfirmDialog di DashboardPage.
+// Two-way: ON -> click requests OFF (request-off); OFF -> click requests
+// ON (request-on). Validation is handled by ConfirmDialog in DashboardPage.
 function handleToggle() {
   if (props.room.relayOn) emit('request-off', props.room)
+  else emit('request-on', props.room)
 }
 </script>
 
 <style scoped>
-/* Pill toggle ala CodePen @cl0udc0ntr0l (https://codepen.io/cl0udc0ntr0l/pen/njQQbw).
-   Diskalakan 75x40 -> 56x28 supaya muat di header kartu ruangan. */
+/* Pill toggle in the style of CodePen @cl0udc0ntr0l (https://codepen.io/cl0udc0ntr0l/pen/njQQbw).
+   Scaled 75x40 -> 56x28 to fit the room card header. */
 .toggle {
   position: relative;
   width: 56px;
@@ -163,7 +164,7 @@ function handleToggle() {
   color: rgba(0, 0, 0, 0);
 }
 
-/* Glow streak effect saat ON */
+/* Glow streak effect when ON */
 .glow-comp {
   position: absolute;
   opacity: 0;
