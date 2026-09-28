@@ -77,7 +77,8 @@ function drawChart() {
   props.data.forEach((d, i) => {
     const x = padL + i * xStep
     const y = padT + (1 - (d.watts - minVal) / range) * (H - padT - padB)
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
   })
   ctx.lineTo(padL + (props.data.length - 1) * xStep, H - padB)
   ctx.lineTo(padL, H - padB)
@@ -94,7 +95,8 @@ function drawChart() {
   props.data.forEach((d, i) => {
     const x = padL + i * xStep
     const y = padT + (1 - (d.watts - minVal) / range) * (H - padT - padB)
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
   })
   ctx.stroke()
 

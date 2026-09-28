@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, useId } from 'vue'
 
 const props = defineProps({
   logs: { type: Array, default: () => [] }, // [{ timestampMs, level, source, message }]
@@ -190,7 +190,9 @@ function bucketHasData(b) {
 }
 // Each level gets its own <pattern> id (scoped with a component-instance prefix so
 // multiple chart instances on the same page never collide over the same SVG id).
-const uid = Math.random().toString(36).slice(2, 8)
+// A monotonic counter instead of Math.random(): the value only has to be unique,
+// and SonarQube javascript:S2245 flags Math.random() as an unsafe generator.
+const uid = useId()
 function stripeId(lvl) {
   return `logvol-stripe-${uid}-${lvl}`
 }

@@ -1,10 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Annie+Use+Your+Telescope&family=Doto:wght@400..900&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap');
+@import "tw-animate-css";
+/* Every @import must precede all other rules (SonarQube css:S8778). Tailwind's
+   own import comes last because `@import "tailwindcss"` is expanded by the
+   Tailwind PostCSS plugin, which must run after the plain CSS imports. */
+@import "tailwindcss";
 
 @plugin 'tailwindcss-animate';
-
-@import "tailwindcss";
-@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -150,6 +152,13 @@
 .custom-scroll::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in srgb, var(--accent-color, #0f8cd5) 60%, transparent);
 }
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 
 /* Chat history item — thin gray border when idle, turns into the theme accent color
    when the item is hovered OR active (the currently open conversation) */
