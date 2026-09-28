@@ -29,11 +29,11 @@ function extractSseEvents(buffer) {
     const content = rawEvent
       .split('\n')
       .filter((l) => l.startsWith('data:'))
-      // KONTRAK BACKEND KITA: Spring SSE writer (GroqService/AdminController)
-      // menulis 'data:' langsung diikuti konten — TANPA spasi delimiter.
-      // Spasi setelah 'data:' yang terlihat adalah bagian dari token AI itu
-      // sendiri (word-boundary tokenizer, mis. " saya", " adalah") — JANGAN
-      // dibuang, kalau tidak kata-kata menyatu ("Sayaadalah...").
+      // OUR BACKEND CONTRACT: the Spring SSE writer (GroqService/AdminController)
+      // writes 'data:' immediately followed by content — NO delimiter space.
+      // The visible space after 'data:' is part of the AI token itself
+      // (word-boundary tokenizer, e.g. " saya", " adalah") — DO NOT
+      // strip it, or words will fuse ("Sayaadalah...").
       .map((l) => l.slice(5))
       .join('\n')
 
@@ -64,8 +64,9 @@ async function consumeSseStream(response, onChunk) {
 }
 
 const agentService = {
-  // stream text chat via SSE fetch — conversationId is null for a new thread
-  async streamChat(message, history = [], conversationId, onChunk, onDone, onError) {
+  // stream text chat via SSE fetch — conversationId is null for a new thread.
+  // Optional params are grouped in a trailing options object (S1788).
+  async streamChat(message, onChunk, onDone, onError, { history = [], conversationId = null } = {}) {
     try {
       const response = await fetch(`${BASE_URL}/api/agent/chat`, {
         method: 'POST',
@@ -82,13 +83,15 @@ const agentService = {
     }
   },
 
-  // Ephemeral one-shot Q&A (Metrics overlay) — backend does NOT persist this
-  async streamQuickAsk(message, onChunk, onDone, onError) {
+  // Ephemeral one-shot Q&A (Metrics overlay) — backend does NOT persist this.
+  // metrics/hours tell the backend which charts the admin is viewing so it can pull
+  // the ACTUAL Prometheus data and answer from real numbers instead of guessing.
+  async streamQuickAsk(message, metrics, hours, onChunk, onDone, onError) {
     try {
       const response = await fetch(`${BASE_URL}/api/agent/quick-ask`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, metrics, hours }),
       })
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
