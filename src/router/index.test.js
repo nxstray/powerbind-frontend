@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Halaman di-mock supaya navigasi guard bisa dites tanpa me-load page asli
-// (beserta seluruh dependensinya seperti charts/mermaid yang berat).
+// Pages are mocked so navigation guards can be tested without loading the real
+// pages (along with all their heavy dependencies like charts/mermaid).
 vi.mock('@/pages/LoginPage.vue', () => ({ default: { name: 'LoginPage', render: () => null } }))
 vi.mock('@/pages/DashboardPage.vue', () => ({
   default: { name: 'DashboardPage', render: () => null },
@@ -12,8 +12,8 @@ vi.mock('@/pages/LogPage.vue', () => ({ default: { name: 'LogPage', render: () =
 
 import router from '@/router'
 
-// Helper: bikin JWT dummy dengan payload role tertentu (base64url sederhana,
-// signature diabaikan karena guard cuma decode payload).
+// Helper: build a dummy JWT with a specific role payload (simple base64url,
+// signature ignored since the guard only decodes the payload).
 function makeToken(role) {
   const payload = btoa(JSON.stringify({ sub: 'user', role })).replace(/=+$/, '')
   return `header.${payload}.signature`
@@ -76,10 +76,10 @@ describe('router guard', () => {
   })
 
   it('dashboard (/) tanpa token → diarahkan ke login', async () => {
-    // Router masih berada di '/' dari test sebelumnya; push('/') ke lokasi
-    // yang sama akan di-abort sebagai duplicated navigation sehingga guard
-    // tidak jalan. Paksa pindah ke '/login' dulu supaya navigasi berikutnya
-    // benar-benar dieksekusi.
+    // The router is still on '/' from the previous test; pushing '/' to the same
+    // location gets aborted as a duplicated navigation so the guard
+    // doesn't run. Force a move to '/login' first so the next navigation
+    // actually executes.
     await router.push('/login')
 
     expect(await visit('/')).toBe('login')
