@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="confirm-fade">
-      <div class="fixed inset-0 z-100 flex items-center justify-center px-4">
+      <div v-if="authStore.mustChangePassword" class="fixed inset-0 z-100 flex items-center justify-center px-4">
         <!-- Blurred backdrop — intentionally not clickable, this dialog can't be dismissed -->
         <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" />
 
@@ -13,9 +13,10 @@
 
           <form @submit.prevent="handleSubmit" class="mt-4 space-y-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Password saat ini</label>
+              <label for="change-pw-current" class="block text-xs font-medium text-gray-700 mb-1">Password saat ini</label>
               <div class="pwBx">
                 <input
+                  id="change-pw-current"
                   v-model="form.currentPassword"
                   :type="showCurrent ? 'text' : 'password'"
                   required
@@ -30,9 +31,10 @@
             </div>
 
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Password baru</label>
+              <label for="change-pw-new" class="block text-xs font-medium text-gray-700 mb-1">Password baru</label>
               <div class="pwBx">
                 <input
+                  id="change-pw-new"
                   v-model="form.newPassword"
                   :type="showNew ? 'text' : 'password'"
                   required
@@ -62,9 +64,10 @@
             </div>
 
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Konfirmasi password baru</label>
+              <label for="change-pw-confirm" class="block text-xs font-medium text-gray-700 mb-1">Konfirmasi password baru</label>
               <div class="pwBx">
                 <input
+                  id="change-pw-confirm"
                   v-model="form.confirmPassword"
                   :type="showConfirm ? 'text' : 'password'"
                   required

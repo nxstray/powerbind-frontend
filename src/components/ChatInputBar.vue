@@ -4,7 +4,7 @@
     <!-- Pending file attachment preview -->
     <div v-if="pendingFile" class="mb-2 flex items-center gap-2">
       <div class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs" :class="isDark ? 'bg-white/10 text-white/70' : 'bg-gray-100 text-gray-600'">
-        <img v-if="pendingFilePreview" :src="pendingFilePreview" class="w-8 h-8 rounded object-cover" />
+        <img v-if="pendingFilePreview" :src="pendingFilePreview" alt="Pratinjau lampiran" class="w-8 h-8 rounded object-cover" />
         <FileIcon v-else :size="14" />
         <span class="truncate max-w-50">{{ pendingFile.name }}</span>
         <button @click="$emit('clear-file')" class="hover:text-red-500 transition">
@@ -29,7 +29,9 @@
           <PaperclipIcon :size="16" />
         </button>
       </AppTooltip>
+      <label for="chat-file-input" class="sr-only">Unggah lampiran</label>
       <input
+        id="chat-file-input"
         ref="fileInputEl"
         type="file"
         class="hidden"
@@ -39,6 +41,7 @@
 
       <textarea
         ref="textareaEl"
+        aria-label="Tulis pesan"
         :value="input"
         @input="onInput"
         @keydown.enter.exact.prevent="$emit('send')"
