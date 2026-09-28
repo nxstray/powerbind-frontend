@@ -133,19 +133,6 @@
           </div>
         </div>
 
-        <!-- Error state -->
-        <div v-else-if="store.error && !store.summary" class="flex items-center justify-center h-64">
-          <div class="text-center">
-            <p class="text-sm text-gray-500">{{ store.error }}</p>
-            <button
-              @click="store.fetchSummary()"
-              class="mt-3 text-xs text-[#0f8cd5] hover:underline"
-            >
-              Coba lagi
-            </button>
-          </div>
-        </div>
-
         <!-- Dashboard content -->
         <template v-else-if="store.summary">
 
@@ -299,6 +286,10 @@
       </div>
 
       </main>
+
+      <p v-if="loadError" class="text-center text-xs text-red-400 pb-3 shrink-0">
+        Gagal mengambil data dashboard dari /api/dashboard/summary. Pastikan backend jalan dan kamu login sebagai admin.
+      </p>
     </div>
 
     <!-- Validation: turn a room's device off -->
@@ -376,6 +367,9 @@ import CloudIcon from '@/components/icons/CloudIcon.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
+// Slim red failure strip pinned at the bottom of the page - same shape as
+// LogPage's alert, so every data page reports connection failures identically.
+const loadError = computed(() => !!store.error)
 const authStore = useAuthStore()
 
 const sidebarCollapsed = ref(false)

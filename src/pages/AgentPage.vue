@@ -239,6 +239,10 @@
       </Transition>
 
       <!-- Chat input area — placed at the bottom once the conversation has started -->
+      <p v-if="loadError" class="text-center text-xs text-red-400 pb-3 shrink-0">
+        Gagal mengambil riwayat percakapan dari /api/agent/conversations. Pastikan backend jalan dan kamu login sebagai admin.
+      </p>
+
       <div v-if="messages.length > 0" class="shrink-0 px-4 md:px-8 pb-6 md:pb-8">
         <div class="max-w-3xl mx-auto w-full">
           <ChatInputBar
@@ -357,6 +361,7 @@ const LAST_CONVERSATION_KEY = 'gemono:lastConversationId'
 const historyDropdownOpen = ref(false)
 const historyDropdownRef = ref(null)
 const conversations = ref([])
+const loadError = ref(false)
 
 // Validation dialog state — logout
 const logoutConfirm = ref({ open: false, loading: false })
@@ -575,7 +580,11 @@ function handleOutsideClick(e) {
 async function loadConversationList() {
   try {
     conversations.value = await agentService.getConversations()
-  } catch { conversations.value = [] }
+    loadError.value = false
+  } catch {
+    conversations.value = []
+    loadError.value = true
+  }
 }
 
 async function fetchConversationMessages(id) {
@@ -591,8 +600,10 @@ async function fetchConversationMessages(id) {
     }))
     loadedConversationId.value = id
     localStorage.setItem(LAST_CONVERSATION_KEY, id)
+    loadError.value = false
     await scrollToBottom()
   } catch {
+    loadError.value = true
     console.warn('[Agent] Failed to load conversation')
     localStorage.removeItem(LAST_CONVERSATION_KEY)
     router.replace('/agent')

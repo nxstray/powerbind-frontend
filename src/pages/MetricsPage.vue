@@ -136,8 +136,6 @@
         <!-- Charts — this is the ONLY scrollable region on the page now, so there is
              never a stray page-level scrollbar fighting with the panel/topbar. -->
         <main class="custom-scroll flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-3 space-y-3">
-          <div v-if="error" class="rounded-md border border-red-200 bg-red-50 text-red-600 text-xs px-3 py-2">{{ error }}</div>
-
           <!-- Two containers only: memory (fixed) + metric explorer (dropdown + search) -->
           <MetricsChart :series="memorySeries" format="bytes" title="jvm_memory_used_bytes" :is-dark="isDark" hide-legend-scrollbar />
 
@@ -184,6 +182,10 @@
             </template>
           </MetricsChart>
         </main>
+
+        <p v-if="loadError" class="text-center text-xs text-red-400 pb-3 shrink-0">
+          Gagal mengambil metrik dari /api/admin/metrics. Pastikan Prometheus jalan dan kamu login sebagai admin.
+        </p>
       </div>
 
       <!-- Ask Gemono panel wrapper — full viewport height (top to bottom). The
@@ -306,7 +308,7 @@ const memorySeries = ref([])
 const cpuSeries = ref([])
 const metricNames = ref([])
 const metricSearch = ref('')
-const error = ref(null)
+const loadError = ref(false)
 const lastUpdated = ref('')
 const rangeOpen = ref(false)
 const metricOpen = ref(false)
@@ -347,10 +349,10 @@ async function fetchAll() {
     ])
     memorySeries.value = mem.series
     cpuSeries.value = sel.series
-    error.value = null
+    loadError.value = false
     lastUpdated.value = new Date().toLocaleTimeString()
   } catch {
-    error.value = 'Gagal mengambil metrik. Pastikan backend dan Prometheus jalan.'
+    loadError.value = true
   }
 }
 
