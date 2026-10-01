@@ -240,7 +240,8 @@
 
       <!-- Chat input area — placed at the bottom once the conversation has started -->
       <p v-if="loadError" class="text-center text-xs text-red-400 pb-3 shrink-0">
-        Gagal mengambil riwayat percakapan dari /api/agent/conversations. Pastikan backend jalan dan kamu login sebagai admin.
+        Gagal memuat percakapan.
+        <button @click="retryLoad" class="underline cursor-pointer hover:opacity-80 ml-1">Coba lagi</button>
       </p>
 
       <div v-if="messages.length > 0" class="shrink-0 px-4 md:px-8 pb-6 md:pb-8">
@@ -610,6 +611,14 @@ async function fetchConversationMessages(id) {
   } finally {
     loadingConversation.value = false
   }
+}
+
+// Retry after a failed load — mirrors onMounted: refresh the list, then
+// re-open whichever conversation the URL (or last-visit memory) points at.
+async function retryLoad() {
+  await loadConversationList()
+  const id = route.params.id || localStorage.getItem(LAST_CONVERSATION_KEY)
+  if (id) await fetchConversationMessages(id)
 }
 
 function loadConversation(id) {

@@ -184,7 +184,8 @@
         </main>
 
         <p v-if="loadError" class="text-center text-xs text-red-400 pb-3 shrink-0">
-          Gagal mengambil metrik dari /api/admin/metrics. Pastikan Prometheus jalan dan kamu login sebagai admin.
+          Gagal mengambil metrik dari /api/admin/metrics. Pastikan Prometheus telah jalan.
+          <button @click="retryMetrics" class="underline cursor-pointer hover:opacity-80 ml-1">Coba lagi</button>
         </p>
       </div>
 
@@ -369,6 +370,12 @@ async function fetchNames() {
   } catch {
     metricNames.value = []
   }
+}
+
+// Retry after a failed load — reruns both the charts and the metric-name
+// list, since either request failing is what raised the strip.
+async function retryMetrics() {
+  await Promise.all([fetchAll(), fetchNames()])
 }
 
 // ---- Sidebar (same pattern as LogPage) ---------------------------------------

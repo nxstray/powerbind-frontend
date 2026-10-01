@@ -133,7 +133,8 @@
       </div>
 
       <p v-if="loadError" class="text-center text-xs text-red-400 pb-3 shrink-0">
-        Gagal mengambil log dari /api/admin/logs. Pastikan Loki jalan dan kamu login sebagai admin.
+        Gagal mengambil log dari /api/admin/logs. Pastikan Loki telah jalan.
+        <button @click="fetchLogs" class="underline cursor-pointer hover:opacity-80 ml-1">Coba lagi</button>
       </p>
     </div>
 

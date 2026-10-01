@@ -154,7 +154,21 @@ describe('AgentPage', () => {
 
     const alert = wrapper.find('p.text-red-400')
     expect(alert.exists()).toBe(true)
-    expect(alert.text()).toContain('Gagal mengambil riwayat percakapan dari /api/agent/conversations')
+    expect(alert.text()).toContain('Gagal memuat percakapan')
+  })
+
+  it('tombol Coba lagi memuat ulang daftar percakapan lalu menyembunyikan strip', async () => {
+    agentService.getConversations.mockRejectedValueOnce(new Error('backend down'))
+    mountPage()
+    await flushPromises()
+    expect(wrapper.find('p.text-red-400').exists()).toBe(true)
+
+    agentService.getConversations.mockResolvedValue([{ id: 'conv-1', title: 'Percakapan 1' }])
+    await wrapper.find('p.text-red-400 button').trigger('click')
+    await flushPromises()
+
+    expect(agentService.getConversations).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('p.text-red-400').exists()).toBe(false)
   })
 
   it('loads conversation messages when route param id is present', async () => {

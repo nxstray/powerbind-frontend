@@ -123,6 +123,21 @@ describe('LogPage', () => {
     expect(wrapper.findAllComponents(LogPanel)[0].props('logs')).toEqual([])
   })
 
+  it('tombol Coba lagi menarik ulang log lalu menyembunyikan strip error', async () => {
+    adminService.queryLogs.mockRejectedValueOnce(new Error('loki down'))
+    mountPage()
+    await flushPromises()
+    expect(wrapper.find('p.text-red-400').exists()).toBe(true)
+
+    adminService.queryLogs.mockResolvedValue(SAMPLE_LOGS)
+    await wrapper.find('p.text-red-400 button').trigger('click')
+    await flushPromises()
+
+    expect(adminService.queryLogs).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('p.text-red-400').exists()).toBe(false)
+    expect(wrapper.findAllComponents(LogPanel)[0].props('logs')).toHaveLength(2)
+  })
+
   it('chip level yang dimatikan menyembunyikan log level tersebut', async () => {
     adminService.queryLogs.mockResolvedValue(SAMPLE_LOGS)
     mountPage()

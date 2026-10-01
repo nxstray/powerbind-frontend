@@ -288,7 +288,8 @@
       </main>
 
       <p v-if="loadError" class="text-center text-xs text-red-400 pb-3 shrink-0">
-        Gagal mengambil data dashboard dari /api/dashboard/summary. Pastikan backend jalan dan kamu login sebagai admin.
+        Gagal memuat data dashboard.
+        <button @click="store.fetchSummary()" class="underline cursor-pointer hover:opacity-80 ml-1">Coba lagi</button>
       </p>
     </div>
 

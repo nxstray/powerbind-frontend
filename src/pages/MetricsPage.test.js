@@ -141,6 +141,25 @@ describe('MetricsPage', () => {
     expect(wrapper.findAllComponents(MetricsChart)[0].props('series')).toEqual([])
   })
 
+  it('tombol Coba lagi menarik ulang metrik dan daftar nama metrik', async () => {
+    metricsService.query.mockRejectedValue(new Error('prometheus down'))
+    mountPage()
+    await flushPromises()
+    expect(wrapper.find('p.text-red-400').exists()).toBe(true)
+    expect(metricsService.getNames).toHaveBeenCalledTimes(1)
+
+    metricsService.query.mockImplementation(({ metric }) =>
+      Promise.resolve({ query: metric, series: [{ name: metric, points: [{ t: 1_700_000_000_000, v: 1024 }] }] }),
+    )
+    await wrapper.find('p.text-red-400 button').trigger('click')
+    await flushPromises()
+
+    expect(metricsService.query).toHaveBeenCalledTimes(4)
+    expect(metricsService.getNames).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('p.text-red-400').exists()).toBe(false)
+    expect(wrapper.findAllComponents(MetricsChart)[0].props('series')).toHaveLength(1)
+  })
+
   it('dropdown range mengubah hours + step lalu menarik ulang metrik', async () => {
     mountPage()
     await flushPromises()
