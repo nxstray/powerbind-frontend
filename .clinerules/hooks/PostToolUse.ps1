@@ -42,8 +42,8 @@ try {
     $subject = ''
     if ($null -ne $parameters) {
         $subject = Get-FieldAny $parameters @(
-            'command', 'path', 'file_path', 'filePath', 'query', 'url',
-            'task', 'message', 'pattern', 'regex'
+            'command', 'commands', 'path', 'file_path', 'filePath', 'query',
+            'url', 'task', 'question', 'message', 'pattern', 'regex', 'key'
         ) ''
     }
 
@@ -52,6 +52,19 @@ try {
     }
 
     $combined = ("$subject $result").Trim()
+
+    # Some tools receive a pre-stringified object, which arrives here as the
+    # literal "[object Object]" -- a placeholder that tells the reader nothing.
+    # Fall back to the call parameters, which are far more useful.
+    # .Contains() is deliberate: in a -like wildcard the brackets of
+    # "[object Object]" form a character class and match almost anything.
+    if ($combined.Contains('[object Object]') -and $null -ne $parameters) {
+        try {
+            $fallback = ($parameters | ConvertTo-Json -Compress -Depth 5)
+            if (-not [string]::IsNullOrWhiteSpace($fallback)) { $combined = $fallback }
+        } catch { }
+    }
+
     $preview = ConvertTo-CompactText $combined $config.PreviewChars
     $estimated = Get-EstimatedTokens $combined
 
