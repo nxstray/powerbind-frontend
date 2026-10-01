@@ -1,0 +1,4 @@
+# Brand icons downloaded on the first build. build.ps1 fetches the Simple Icons
+# slugs in $ICONS into this folder and embeds them into system-design.svg, so the
+# cache is disposable and never needs to be versioned.
+.icon-cache/
