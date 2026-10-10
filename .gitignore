@@ -46,3 +46,6 @@ sonar-scan-log.txt
 
 # Generated SBOM (CycloneDX)
 sbom/
+
+# Session handoff (local-only, never push)
+docs/progress.md
