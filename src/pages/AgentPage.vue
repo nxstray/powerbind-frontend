@@ -209,6 +209,18 @@
             <!-- Agent message — no sparkles avatar / gradient background -->
             <div v-else class="self-start max-w-full md:max-w-[85%] w-full ml-2 md:ml-4">
               <MarkdownRenderer :content="msg.content" :class="isDark ? 'text-gray-200' : 'text-gray-700'" class="text-sm md:text-base" />
+              <!-- Follow-up suggestion chips — sent by the backend as the last SSE chunk, stripped from the text -->
+              <div v-if="msg.suggestions?.length && msg.id !== streamingMsgId" class="mt-2 flex flex-wrap gap-1.5">
+                <button
+                  v-for="(s, si) in msg.suggestions"
+                  :key="si"
+                  type="button"
+                  :disabled="streaming"
+                  @click="askSuggestion(s)"
+                  class="text-xs rounded-full border px-3 py-1.5 transition hover:scale-[1.02] disabled:opacity-40"
+                  :class="isDark ? 'border-white/15 text-white/80 hover:bg-white/10' : 'border-gray-200 text-gray-600 hover:bg-gray-100'"
+                >{{ s }}</button>
+              </div>
               <!-- Timestamp only appears once the answer has fully streamed in -->
               <p v-if="msg.id !== streamingMsgId" class="text-[10px] mt-1.5" :class="isDark ? 'text-white/50' : 'text-gray-400'">
                 {{ msg.time }}<span v-if="msg.rawTime" class="ml-1">· {{ relativeTime(msg.rawTime) }}</span>
@@ -298,6 +310,7 @@ import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { useAuthStore } from '@/stores/authStore'
 import agentService from '@/services/agentService'
+import { appendAgentChunk } from '@/utils/suggestions'
 // Lazy-loaded so marked + DOMPurify (and the on-demand mermaid chunk it can
 // pull) stay out of the main agent page chunk until the first agent message
 // actually needs to be rendered.
@@ -743,7 +756,7 @@ async function send() {
   streaming.value = true
 
   const agentMsgId = Date.now() + 1
-  messages.value.push({ id: agentMsgId, role: 'agent', content: '', time: timeNow(), rawTime: Date.now() })
+  messages.value.push({ id: agentMsgId, role: 'agent', content: '', suggestions: [], time: timeNow(), rawTime: Date.now() })
   streamingMsgId.value = agentMsgId
 
   // Bring the start of the agent's reply into view once, then let it
@@ -753,7 +766,7 @@ async function send() {
 
   const onChunk = (chunk) => {
     const msg = messages.value.find((m) => m.id === agentMsgId)
-    if (msg) msg.content += chunk
+    if (msg) appendAgentChunk(msg, chunk)
   }
   const wasNewConversation = !activeConversationId.value
   const onDone = async () => {
@@ -785,6 +798,13 @@ async function send() {
     const history = buildHistory().slice(0, -1)
     agentService.streamChat(text, onChunk, onDone, onError, { history, conversationId: activeConversationId.value })
   }
+}
+
+// Follow-up chip tapped — resend the suggestion as a new user message.
+function askSuggestion(suggestion) {
+  if (streaming.value || !suggestion) return
+  input.value = suggestion
+  send()
 }
 
 // ===== Voice input =====
