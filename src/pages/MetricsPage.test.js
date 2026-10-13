@@ -299,8 +299,43 @@ describe('MetricsPage', () => {
     expect(agentService.streamQuickAsk).toHaveBeenCalledTimes(1)
   })
 
+  it('panel Ask Gemono: trailer suggestions dirender sebagai chips yang bisa diklik', async () => {
+    mountPage()
+    await flushPromises()
+    await askTrigger().trigger('click')
+
+    await wrapper.find('#ask-gemono-input').setValue('kenapa memory naik?')
+    await wrapper.find('form').trigger('submit.prevent')
+
+    const [, , , onChunk, onDone] = agentService.streamQuickAsk.mock.calls[0]
+    onChunk('Memory naik karena GC.')
+    onChunk('\n__SUGGESTIONS__:["Apakah pola memory sehat?","Kapan puncak memory terjadi?"]')
+    onDone()
+    await forceRender()
+
+    expect(askPanel().text()).toContain('Memory naik karena GC.')
+    expect(askPanel().text()).not.toContain('__SUGGESTIONS__')
+
+    const chips = askPanel()
+      .findAll('button')
+      .filter((b) => b.text() === 'Apakah pola memory sehat?')
+    expect(chips).toHaveLength(1)
+
+    agentService.streamQuickAsk.mockImplementation((msg, metrics, hours, chunk, done) => {
+      chunk('Pola memory sehat.')
+      done()
+    })
+    await chips[0].trigger('click')
+    await flushPromises()
+
+    expect(agentService.streamQuickAsk).toHaveBeenCalledTimes(2)
+    expect(agentService.streamQuickAsk.mock.calls[1][0]).toBe('Apakah pola memory sehat?')
+  })
+
 
   it('menampilkan pesan kendala saat stream Ask Gemono gagal', async () => {
+    agentService.streamQuickAsk.mockReset()
+    agentService.streamQuickAsk.mockImplementation(() => {})
     mountPage()
     await flushPromises()
 
@@ -316,6 +351,7 @@ describe('MetricsPage', () => {
       role: 'assistant',
       content: 'Maaf, terjadi kendala: AI unavailable',
       streaming: false,
+      suggestions: [],
     })
 
     await forceRender()
