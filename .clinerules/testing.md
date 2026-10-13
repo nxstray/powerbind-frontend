@@ -19,10 +19,8 @@ Applies when touching Vitest specs or the test/lint configuration.
   (`environment: 'jsdom'`, `globals: true`). Coverage excludes
   `*.test.js`, `*.spec.js` and `src/**/icons/**` - keep that exclusion, icons are
   pure presentational SVG wrappers.
-- `vite.config.js` also registers the `vitest-public-assets` plugin that maps
-  root-relative URLs (`/favicon.ico`) onto `public/` during tests on Windows.
-  Do not remove it to "simplify" config - suites that render those assets break
-  without it.
+- Keep the `vitest-public-assets` plugin in `vite.config.js`: it maps root-relative
+  URLs (`/favicon.ico`) onto `public/` on Windows; removing it breaks those suites.
 
 ## Writing a test
 
