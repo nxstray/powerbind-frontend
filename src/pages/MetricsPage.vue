@@ -222,6 +222,18 @@
                   <div v-else class="text-left">
                     <MarkdownRenderer :content="m.content" />
                     <span v-if="m.streaming" class="inline-block w-1.5 h-3 bg-[#0f8cd5] animate-pulse align-text-bottom" />
+                    <!-- Follow-up chips — from the backend's last SSE chunk, stripped from the text -->
+                    <div v-if="m.suggestions?.length && !m.streaming" class="mt-1.5 flex flex-wrap gap-1">
+                      <button
+                        v-for="(s, si) in m.suggestions"
+                        :key="si"
+                        type="button"
+                        :disabled="askStreaming"
+                        @click="askSuggestion(s)"
+                        class="rounded-full border px-2 py-1 text-[11px] leading-none transition hover:scale-[1.02] disabled:opacity-40"
+                        :class="isDark ? 'border-white/15 text-zinc-300 hover:bg-white/10' : 'border-gray-200 text-gray-600 hover:bg-gray-100'"
+                      >{{ s }}</button>
+                    </div>
                   </div>
                 </div>
               </template>
@@ -272,6 +284,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import metricsService from '@/services/metricsService'
 import agentService from '@/services/agentService'
+import { appendAgentChunk } from '@/utils/suggestions'
 
 import MetricsChart from '@/components/MetricsChart.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
@@ -481,7 +494,7 @@ function sendAsk() {
 
   askMessages.value.push({ role: 'user', content: text })
   askInput.value = ''
-  const reply = { role: 'assistant', content: '', streaming: true }
+  const reply = { role: 'assistant', content: '', suggestions: [], streaming: true }
   askMessages.value.push(reply)
   askStreaming.value = true
 
@@ -490,7 +503,7 @@ function sendAsk() {
     [DEFAULT_METRIC, selectedMetric.value],
     hours.value,
     (chunk) => {
-      reply.content += chunk
+      appendAgentChunk(reply, chunk)
     },
     () => {
       reply.streaming = false
@@ -503,6 +516,13 @@ function sendAsk() {
       askStreaming.value = false
     },
   )
+}
+
+// Follow-up chip tapped — resend the suggestion as a new question.
+function askSuggestion(suggestion) {
+  if (askStreaming.value || !suggestion) return
+  askInput.value = suggestion
+  sendAsk()
 }
 
 // Close the range & metric dropdowns on outside click (trigger + panel marked data-*-dd)
