@@ -1,0 +1,14 @@
+# Build context dibatasi - tanpa file ini `COPY . .` di Dockerfile ikut
+# menyalin node_modules (binari Windows) menimpa hasil `npm install` Linux,
+# plus .git/.env yang membuang waktu upload context dan membuka risiko secret.
+node_modules
+dist
+coverage
+sbom
+.scannerwork
+.vscode
+.git
+.env
+logs
+*.log
+docs
