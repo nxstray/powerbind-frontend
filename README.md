@@ -108,7 +108,7 @@ Open **http://localhost:5173**.
 - Open `http://localhost:5173` — you are redirected to `/login` when not authenticated.
 - Enter your **username** and **password**, then press **Sign in**.
 - Accounts are managed by the backend (user seeding — see the backend README).
-- The backend rate-limits requests (30 per 60 s) and locks login after 5 failed attempts for 10 minutes; a `429` shows as "Too many attempts".
+- The backend rate-limits requests and temporarily locks repeated failed logins; a `429` shows as "Too many attempts".
 
 ### 2. Dashboard
 
@@ -188,7 +188,7 @@ src/
 
 | Symptom | Likely cause / fix |
 |---|---|
-| Login always fails with "Invalid username or password" | Backend not running, wrong `VITE_API_URL`, or wrong credentials (5 failures → 10 min lockout) |
+| Login always fails with "Invalid username or password" | Backend not running, wrong `VITE_API_URL`, or wrong credentials (repeated failures lock the login temporarily) |
 | Dashboard shows no data | Backend down, or not authenticated — check the browser console for `API Error [...]` entries |
 | Rooms/power not updating live | WebSocket blocked — confirm the backend exposes `/ws` and no proxy blocks SockJS |
 | AI answer never streams | Check `VITE_API_URL` and that the Groq key is configured on the backend |
