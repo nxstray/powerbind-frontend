@@ -213,6 +213,41 @@ describe('AgentPage', () => {
     expect(wrapper.text()).toContain('Jawaban AI')
   })
 
+  it('memisahkan trailer suggestions dari teks dan merender chips yang bisa diklik', async () => {
+    agentService.streamChat.mockImplementation((text, onChunk, onDone) => {
+      onChunk('Jawaban AI')
+      onChunk('\n__SUGGESTIONS__:["Tips hemat AC?","Cek konsumsi hari ini?"]')
+      onDone()
+    })
+
+    mountPage()
+    await flushPromises()
+
+    const chatBar = wrapper.findComponent({ name: 'ChatInputBar' })
+    await chatBar.vm.$emit('update:input', 'Kenapa tagihan naik?')
+    await chatBar.vm.$emit('send')
+    await flushPromises()
+
+    // Marker never leaks into the visible answer...
+    expect(wrapper.text()).toContain('Jawaban AI')
+    expect(wrapper.text()).not.toContain('__SUGGESTIONS__')
+
+    // ...but the chips render and resend the suggestion as a new message.
+    const chips = wrapper.findAll('button').filter((b) => b.text() === 'Tips hemat AC?')
+    expect(chips).toHaveLength(1)
+
+    agentService.streamChat.mockImplementation((text, onChunk, onDone) => {
+      onChunk('Suhu ideal 24-25 derajat.')
+      onDone()
+    })
+    await chips[0].trigger('click')
+    await flushPromises()
+
+    expect(agentService.streamChat).toHaveBeenCalledTimes(2)
+    expect(agentService.streamChat.mock.calls[1][0]).toBe('Tips hemat AC?')
+    expect(wrapper.text()).toContain('Suhu ideal 24-25 derajat.')
+  })
+
   it('handles stream error gracefully with friendly message', async () => {
     agentService.streamChat.mockImplementation((text, onChunk, onDone, onError) => {
       onError(new Error('Network error'))
