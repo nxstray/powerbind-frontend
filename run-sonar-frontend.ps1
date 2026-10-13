@@ -2,6 +2,7 @@
 #
 #   .\run-sonar-frontend.ps1              # tests + coverage only (no Sonar push)
 #   .\run-sonar-frontend.ps1 -Token xxx   # .env override, one-off token
+#   .\run-sonar-frontend.ps1 -QualityGate # fail when Quality Gate fails (CI)
 #
 # Credentials are loaded from ./.env (see ./.env.example):
 #   SONAR_HOST_URL   - SonarQube server (default http://localhost:9000)
@@ -21,7 +22,10 @@
 param(
     [string]$Token,
     [string]$SonarHost,
-    [string]$ProjectKey = "powerbind-frontend"
+    [string]$ProjectKey = "powerbind-frontend",
+    # CI parity with backend: fail this run when the SonarQube Quality Gate
+    # fails (sonar.qualitygate.wait - scanner CLI 6.2+, SonarQube 10.6+).
+    [switch]$QualityGate
 )
 
 # --- load ./.env (KEY=VALUE lines, '#' comments ignored) ----------------------
@@ -65,7 +69,9 @@ Write-Host "Pushing analysis to SonarQube at $SonarHost (project: $ProjectKey)..
 # name to a different bin and hangs on a hidden interactive prompt.
 $env:SONAR_HOST_URL = $SonarHost
 $env:SONAR_TOKEN = $Token
-& ".\node_modules\.bin\sonar-scanner-npm.cmd"
+$scannerArgs = @()
+if ($QualityGate) { $scannerArgs += '-Dsonar.qualitygate.wait=true' }
+& ".\node_modules\.bin\sonar-scanner-npm.cmd" @scannerArgs
 $sonarExitCode = $LASTEXITCODE
 
 if ($sonarExitCode -ne 0) {
