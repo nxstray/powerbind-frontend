@@ -1,0 +1,98 @@
+# CI: lint + test coverage, build, SBOM CycloneDX, SonarQube (opsional).
+#
+# Job build jalan di ubuntu-latest (GitHub-hosted).
+# Job sonar jalan di runner SELF-HOSTED (powerbind-win, PC dev) karena
+# SonarQube Server hanya ada di mesin ini (localhost:9000 tidak terjangkau
+# dari runner cloud); coverage dihasilkan ulang di runner oleh script.
+#
+# Secrets repo (Settings > Secrets and variables > Actions):
+#   SONAR_HOST_URL - URL SonarQube Server (di mesin ini: http://localhost:9000)
+#   SONAR_TOKEN    - token analisis dari SonarQube (My Account > Security).
+#   Kosong = job sonar jalan tanpa analisis (step dilewati), build tetap jalan.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # --legacy-peer-deps konsisten dengan Dockerfile: kombinasi Vite 8 /
+      # Tailwind v4 / ESLint 10 masih punya peer-dependency yang belum rapi.
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      # Node 22 membawa npm 10; perintah `npm sbom` (CycloneDX) baru ada di
+      # npm 11 - mesin dev memakai npm 11.0.0.
+      - name: Upgrade npm for SBOM
+        run: npm install -g npm@11
+
+      # Lint memakai --fix; langkah berikutnya memastikan tidak ada isu yang
+      # lolos karena "diperbaiki diam-diam" di runner.
+      - name: Lint (oxlint + eslint)
+        run: npm run lint
+
+      - name: Lint must not rewrite files
+        run: git diff --exit-code
+
+      - name: Test + coverage (vitest)
+        run: npm run test:unit -- --coverage
+
+      - name: Build (vite)
+        run: npm run build
+
+      # Script yang sama dengan mesin dev; menulis + memvalidasi sbom/bom.json.
+      - name: SBOM (CycloneDX)
+        shell: pwsh
+        run: ./run-sbom-frontend.ps1
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom/bom.json
+          if-no-files-found: error
+
+  # Analisis SonarQube di runner self-hosted (PC dev) - lihat header file.
+  sonar:
+    needs: build
+    runs-on: self-hosted
+    timeout-minutes: 20
+    env:
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      # fetch-depth: 0 WAJIB: shallow clone membuat blame / new-code detection
+      # salah (ditekankan di docs resmi SonarSource untuk GitHub Actions).
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Tanpa setup-node: runner PC dev sudah membawa Node + Java 17 di PATH
+      # (praktik yang sama dengan job sonar di ci.yml backend).
+      - name: Install dependencies
+        if: ${{ env.SONAR_HOST_URL != '' }}
+        run: npm ci --legacy-peer-deps
+
+      # run-sonar-frontend.ps1 menjalankan ulang vitest --coverage lalu push
+      # analysis; -QualityGate mengaktifkan sonar.qualitygate.wait (scanner
+      # CLI 6.2+, SonarQube 10.6+) supaya pipeline merah saat Gate gagal.
+      - name: SonarQube analysis
+        if: ${{ env.SONAR_HOST_URL != '' }}
+        run: .\run-sonar-frontend.ps1 -Token "$env:SONAR_TOKEN" -SonarHost "$env:SONAR_HOST_URL" -QualityGate
