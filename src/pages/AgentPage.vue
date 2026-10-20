@@ -161,7 +161,7 @@
           <!-- Empty State — suppressed while we're still fetching an active conversation so it never flashes on navigation back -->
           <div v-if="messages.length === 0 && !loadingConversation" class="text-center">
             <h2 class="text-2xl md:text-3xl font-bold font-doto" :class="isDark ? 'text-white' : 'text-gray-800'">
-              {{ typedGreeting }}<span class="typewriter-cursor" aria-hidden="true">|</span>
+              {{ typedGreeting }}<span v-if="!greetingDone" class="typewriter-cursor" aria-hidden="true">|</span>
             </h2>
 
             <!-- Input shown here (top center) until a conversation is started -->
@@ -563,6 +563,8 @@ function buildHistory() {
 
 // Typewriter greeting (font Doto)
 const typedGreeting = ref('')
+// Cursor flag — stops the blinking cursor once the animation is done
+const greetingDone = ref(true)
 let typeTimer = null
 
 const greetingFull = computed(() => `Halo, ${authStore.user?.displayName || 'Administrator'}`)
@@ -570,12 +572,16 @@ const greetingFull = computed(() => `Halo, ${authStore.user?.displayName || 'Adm
 function startTypewriter() {
   clearInterval(typeTimer)
   typedGreeting.value = ''
+  greetingDone.value = false
   const text = greetingFull.value
   let i = 0
   typeTimer = setInterval(() => {
     i++
     typedGreeting.value = text.slice(0, i)
-    if (i >= text.length) clearInterval(typeTimer)
+    if (i >= text.length) {
+      greetingDone.value = true
+      clearInterval(typeTimer)
+    }
   }, 55)
 }
 
