@@ -26,7 +26,7 @@ describe('RoomCard', () => {
 
     expect(wrapper.find('.toggle').classes()).not.toContain('toggle-on')
     expect(wrapper.text()).toContain('Idle')
-    expect(wrapper.find('.bg-gray-300').exists()).toBe(true)
+    expect(wrapper.find('.bg-gray-200').exists()).toBe(true)
   })
 
   it('relay menyala + ada kehadiran menampilkan ON dan Active', () => {
@@ -35,7 +35,7 @@ describe('RoomCard', () => {
     expect(wrapper.find('.toggle').classes()).toContain('toggle-on')
     expect(wrapper.text()).toContain('ON')
     expect(wrapper.text()).toContain('Active')
-    expect(wrapper.find('.bg-\\[\\#0f8cd5\\]').exists()).toBe(true)
+    expect(wrapper.find('.bg-\\[\\#7ADAA5\\]').exists()).toBe(true)
   })
 
   it('klik toggle saat relay menyala meng-emit request-off', async () => {
