@@ -9,8 +9,8 @@
 
       <div class="flex items-center gap-1.5 shrink-0">
         <AppTooltip :text="room.relayOn ? 'Klik untuk mematikan perangkat' : 'Klik untuk menyalakan perangkat'" position="top">
-           <!-- Pill toggle in the style of CodePen @cl0udc0ntr0l (njQQbw) — ON = cyan glow, OFF = dim.
-                Direct click on all devices (desktop & mobile alike);
+           <!-- Pill toggle — OFF = light gray like the empty presence bar / donut track,
+                ON = app green. Direct click on all devices (desktop & mobile alike);
                 validation goes through ConfirmDialog in DashboardPage. -->
           <div
             class="toggle shrink-0 cursor-pointer select-none"
@@ -42,10 +42,10 @@
         <p class="text-[10px] text-gray-400 mb-0.5">Relay</p>
         <div class="flex items-center gap-1.5">
           <div
-            :class="room.relayOn ? 'bg-[#0f8cd5]' : 'bg-gray-300'"
+            :class="room.relayOn ? 'bg-[#7ADAA5]' : 'bg-gray-200'"
             class="w-2 h-2 rounded-full transition-colors duration-300 shrink-0"
           />
-          <span class="text-xs font-semibold" :class="room.relayOn ? 'text-[#0f8cd5]' : 'text-gray-400'">
+          <span class="text-xs font-semibold" :class="room.relayOn ? 'text-[#16a34a]' : 'text-gray-400'">
             {{ room.relayOn ? 'ON' : 'OFF' }}
           </span>
         </div>
@@ -87,19 +87,23 @@ function handleToggle() {
 
 <style scoped>
 /* Pill toggle in the style of CodePen @cl0udc0ntr0l (https://codepen.io/cl0udc0ntr0l/pen/njQQbw).
-   Scaled 75x40 -> 56x28 to fit the room card header. */
+   Scaled 75x40 -> 56x28 to fit the room card header.
+   OFF = light gray like the empty presence bar / donut track (#f0f0ee),
+   ON = app green. */
 .toggle {
   position: relative;
   width: 56px;
   height: 28px;
-  border: 2px solid #444249;
+  border: 2px solid #d1d5db;
   border-radius: 20px;
   box-sizing: border-box;
+  background-color: #f0f0ee;
   transition: border-color 0.6s ease-out;
 }
 
 .toggle.toggle-on {
-  border-color: rgba(137, 194, 217, 0.4);
+  border-color: rgba(122, 218, 165, 0.4);
+  background-color: rgba(122, 218, 165, 0.25);
   transition: all 0.5s 0.15s ease-out;
 }
 
@@ -109,7 +113,7 @@ function handleToggle() {
   width: 20px;
   bottom: 4px;
   right: 27px;
-  background-color: #444249;
+  background-color: #d1d5db;
   border-radius: 19px;
   cursor: pointer;
   transition: all 0.3s 0.1s, width 0.1s, top 0.1s, bottom 0.1s;
@@ -121,8 +125,8 @@ function handleToggle() {
   bottom: 3px;
   right: 3px;
   border-radius: 23px;
-  background-color: #89c2da;
-  box-shadow: 0 0 10px #4b7a8d;
+  background-color: #7ADAA5;
+  box-shadow: 0 0 10px rgba(22, 163, 74, 0.6);
   transition: all 0.2s 0.1s, right 0.1s;
 }
 
@@ -142,7 +146,7 @@ function handleToggle() {
 }
 
 .toggle-on .toggle-text-on {
-  color: #3b6a7d;
+  color: #14532d;
   transition: color 0.3s 0.15s;
 }
 
@@ -157,7 +161,7 @@ function handleToggle() {
   font-weight: bold;
   user-select: none;
   cursor: pointer;
-  color: #444249;
+  color: #9ca3af;
 }
 
 .toggle-on .toggle-text-off {
@@ -173,8 +177,8 @@ function handleToggle() {
   left: 4px;
   right: 4px;
   border-radius: 6px;
-  background-color: rgba(75, 122, 141, 0.1);
-  box-shadow: 0 0 8px rgba(75, 122, 141, 0.2);
+  background-color: rgba(122, 218, 165, 0.1);
+  box-shadow: 0 0 8px rgba(122, 218, 165, 0.2);
   transition: opacity 4.5s 1s;
 }
 
