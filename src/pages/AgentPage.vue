@@ -229,9 +229,11 @@
 
           </div>
 
-          <!-- Streaming indicator — no sparkles avatar -->
-          <div v-if="streaming" class="self-start flex gap-1 pt-1">
-            <div v-for="i in 3" :key="i" class="w-2 h-2 rounded-full animate-bounce" :class="isDark ? 'bg-white/40' : 'bg-gray-400'" :style="{ animationDelay: (i - 1) * 0.2 + 's' }" />
+          <!-- Thinking indicator — ThinkingKnot replaces the 3 bouncing dots;
+               shown while the stream runs, from waiting for the first chunk
+               until the answer is complete -->
+          <div v-if="streaming" class="self-start pt-1" role="status" data-testid="thinking-indicator">
+            <ThinkingKnot :size="THINKING_SIZE" aria-label="Gemono sedang berpikir" />
           </div>
 
         </div>
@@ -316,6 +318,7 @@ import { appendAgentChunk } from '@/utils/suggestions'
 // actually needs to be rendered.
 const MarkdownRenderer = defineAsyncComponent(() => import('@/components/MarkdownRenderer.vue'))
 import ChatInputBar from '@/components/ChatInputBar.vue'
+import ThinkingKnot from '@/components/ThinkingKnot.vue'
 import Toast from '@/components/Toast.vue'
 import HomeIcon from '@/components/icons/HomeIcon.vue'
 import GemonoIcon from '@/components/icons/GemonoIcon.vue'
@@ -345,6 +348,8 @@ const sidebarOpen = ref(false)
 const messages = ref([])
 const input = ref('')
 const streaming = ref(false)
+// Size (px) of the ThinkingKnot indicator shown in the chat while streaming.
+const THINKING_SIZE = 30
 // The agent message currently being streamed — its timestamp stays hidden
 // until the answer completes, so "03.02 · baru saja" only appears once done.
 const streamingMsgId = ref(null)
